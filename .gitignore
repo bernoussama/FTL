@@ -60,3 +60,6 @@ test/libs/
 /.claude/settings.local.json
 /.claude/test-logs/
 /build-docker/
+
+# Rust build output (cargo, when built outside cmake)
+/rust/target/

@@ -223,6 +223,13 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG -funroll-loops")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELEASE} -g3")
 set(CMAKE_C_FLAGS_MINSIZEREL "-Os -DNDEBUG")
 
+# Rust static library (rust/, see docs/rust-rewrite-plan.md). Off by default:
+# the build image does not ship a Rust toolchain yet (apk add rust cargo)
+option(FTL_RUST "Link the Rust static library from rust/ into pihole-FTL" OFF)
+if(FTL_RUST)
+    add_compile_definitions(HAVE_FTL_RS)
+endif()
+
 set(sources
         args.c
         args.h
@@ -352,6 +359,27 @@ if(LIBUNISTRING)
     message(STATUS "Found libunistring: ${LIBUNISTRING}")
 else()
     message(WARNING "libunistring not found, IDN support will be disabled")
+endif()
+
+if(FTL_RUST)
+    find_program(CARGO cargo REQUIRED)
+    set(FTL_RS_DIR ${CMAKE_SOURCE_DIR}/rust)
+    set(FTL_RS_TARGET_DIR ${CMAKE_BINARY_DIR}/rust)
+    set(FTL_RS_LIB ${FTL_RS_TARGET_DIR}/release/libftl_rs.a)
+    file(GLOB_RECURSE FTL_RS_SOURCES CONFIGURE_DEPENDS ${FTL_RS_DIR}/src/*.rs)
+    add_custom_command(
+        OUTPUT ${FTL_RS_LIB}
+        COMMAND ${CARGO} build --release --locked --offline
+                --manifest-path ${FTL_RS_DIR}/Cargo.toml
+                --target-dir ${FTL_RS_TARGET_DIR}
+        DEPENDS ${FTL_RS_SOURCES} ${FTL_RS_DIR}/Cargo.toml ${FTL_RS_DIR}/Cargo.lock
+        COMMENT "Building Rust static library (rust/)"
+        VERBATIM)
+    add_custom_target(ftl_rs_build DEPENDS ${FTL_RS_LIB})
+    add_dependencies(pihole-FTL ftl_rs_build)
+    # Before libc and friends, so they can satisfy what the Rust std needs
+    target_link_libraries(pihole-FTL ${FTL_RS_LIB})
+    message(STATUS "Linking Rust static library ${FTL_RS_LIB}")
 endif()
 
 target_link_libraries(pihole-FTL rt Threads::Threads ${LIBHOGWEED} ${LIBGMP} ${LIBNETTLE} ${LIBIDN2} ${LIBUNISTRING})

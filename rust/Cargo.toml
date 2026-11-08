@@ -1,0 +1,22 @@
+[package]
+name = "ftl-rs"
+version = "0.1.0"
+edition = "2021"
+license = "EUPL-1.2"
+description = "Rust parts of Pi-hole FTL, linked into pihole-FTL as a static library"
+publish = false
+
+[lib]
+name = "ftl_rs"
+crate-type = ["staticlib"]
+path = "src/lib.rs"
+
+# No panic may unwind into C (docs/rust-rewrite-plan.md, ground rules)
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+codegen-units = 1
+lto = true

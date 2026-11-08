@@ -66,6 +66,8 @@
 #include "files.h"
 // getMACVendor()
 #include "database/network-table.h"
+// ftl_rs_version()
+#include "ftl_rs.h"
 // resolveHostname()
 #include "resolve.h"
 // ntp_client()
@@ -687,6 +689,23 @@ void parse_args(int argc, char *argv[])
 		// Print result
 		printf("%s  %s\n", hex, argv[2]);
 		exit(EXIT_SUCCESS);
+	}
+
+	// Rust library check (not listed in help or completions): prints the
+	// version of the linked Rust library and fails if there is none or its
+	// ABI version differs from the one this binary was compiled against
+	if(argc == 2 && strcmp(argv[1], "rust-version") == 0)
+	{
+		// Enable stdout printing
+		cli_mode = true;
+#ifdef HAVE_FTL_RS
+		const uint32_t abi = ftl_rs_abi_version();
+		printf("ftl-rs %s (ABI %u)\n", ftl_rs_version(), abi);
+		exit(abi == FTL_RS_ABI_VERSION ? EXIT_SUCCESS : EXIT_FAILURE);
+#else
+		printf("FTL was built without the Rust library\n");
+		exit(EXIT_FAILURE);
+#endif
 	}
 
 	// MAC vendor lookup mode (test helper, not listed in help or completions)

@@ -1,0 +1,207 @@
+{
+  "module": "ptr_response",
+  "generator": "test/ptr_response_regression.c",
+  "vectors": [
+    {
+      "file": "stale_reply_then_valid-01-query.bin",
+      "test": "stale_reply_then_valid",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "query",
+        "exchange": 1,
+        "lookup_addr": "192.0.2.10",
+        "qtype": 12,
+        "qclass": 1,
+        "tcp": false,
+        "force": true,
+        "resolver_timeout_ms": 2000,
+        "answered_by": "stale_reply_then_valid-01-response.bin"
+      },
+      "expect": {
+        "outcome": "timeout",
+        "name": null,
+        "hostname_warning": null
+      }
+    },
+    {
+      "file": "stale_reply_then_valid-01-response.bin",
+      "test": "stale_reply_then_valid",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "response",
+        "exchange": 1,
+        "answers_query": "stale_reply_then_valid-01-query.bin",
+        "ptr_target": "late-a.example",
+        "delivered_during_lookup": "192.0.2.11",
+        "delay_ms": 2000
+      },
+      "expect": {
+        "accepted": false,
+        "name": null,
+        "reason": "reply to an earlier query, id does not match"
+      }
+    },
+    {
+      "file": "stale_reply_then_valid-02-query.bin",
+      "test": "stale_reply_then_valid",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "query",
+        "exchange": 2,
+        "lookup_addr": "192.0.2.11",
+        "qtype": 12,
+        "qclass": 1,
+        "tcp": false,
+        "force": true,
+        "resolver_timeout_ms": 2000,
+        "answered_by": "stale_reply_then_valid-02-response.bin"
+      },
+      "expect": {
+        "outcome": "name",
+        "name": "answer-b.example",
+        "hostname_warning": null
+      }
+    },
+    {
+      "file": "stale_reply_then_valid-02-response.bin",
+      "test": "stale_reply_then_valid",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "response",
+        "exchange": 2,
+        "answers_query": "stale_reply_then_valid-02-query.bin",
+        "ptr_target": "answer-b.example",
+        "delivered_during_lookup": "192.0.2.11",
+        "delay_ms": 0
+      },
+      "expect": {
+        "accepted": true,
+        "name": "answer-b.example",
+        "reason": null
+      }
+    },
+    {
+      "file": "invalid_name_bang-01-query.bin",
+      "test": "invalid_name_bang",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "query",
+        "exchange": 1,
+        "lookup_addr": "192.0.2.12",
+        "qtype": 12,
+        "qclass": 1,
+        "tcp": false,
+        "force": true,
+        "resolver_timeout_ms": 2000,
+        "answered_by": "invalid_name_bang-01-response.bin"
+      },
+      "expect": {
+        "outcome": "no_name",
+        "name": null,
+        "hostname_warning": {
+          "name": "abc!def.example",
+          "pos": 3
+        }
+      }
+    },
+    {
+      "file": "invalid_name_bang-01-response.bin",
+      "test": "invalid_name_bang",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "response",
+        "exchange": 1,
+        "answers_query": "invalid_name_bang-01-query.bin",
+        "ptr_target": "abc!def.example",
+        "delivered_during_lookup": "192.0.2.12",
+        "delay_ms": 0
+      },
+      "expect": {
+        "accepted": false,
+        "name": null,
+        "reason": "answer name has an invalid character"
+      }
+    },
+    {
+      "file": "invalid_name_space-01-query.bin",
+      "test": "invalid_name_space",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "query",
+        "exchange": 1,
+        "lookup_addr": "192.0.2.13",
+        "qtype": 12,
+        "qclass": 1,
+        "tcp": false,
+        "force": true,
+        "resolver_timeout_ms": 2000,
+        "answered_by": "invalid_name_space-01-response.bin"
+      },
+      "expect": {
+        "outcome": "no_name",
+        "name": null,
+        "hostname_warning": {
+          "name": "my host.example",
+          "pos": 2
+        }
+      }
+    },
+    {
+      "file": "invalid_name_space-01-response.bin",
+      "test": "invalid_name_space",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "response",
+        "exchange": 1,
+        "answers_query": "invalid_name_space-01-query.bin",
+        "ptr_target": "my host.example",
+        "delivered_during_lookup": "192.0.2.13",
+        "delay_ms": 0
+      },
+      "expect": {
+        "accepted": false,
+        "name": null,
+        "reason": "answer name has an invalid character"
+      }
+    },
+    {
+      "file": "invalid_name_empty-01-query.bin",
+      "test": "invalid_name_empty",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "query",
+        "exchange": 1,
+        "lookup_addr": "192.0.2.14",
+        "qtype": 12,
+        "qclass": 1,
+        "tcp": false,
+        "force": true,
+        "resolver_timeout_ms": 2000,
+        "answered_by": "invalid_name_empty-01-response.bin"
+      },
+      "expect": {
+        "outcome": "no_name",
+        "name": null,
+        "hostname_warning": null
+      }
+    },
+    {
+      "file": "invalid_name_empty-01-response.bin",
+      "test": "invalid_name_empty",
+      "op": "resolveHostname",
+      "args": {
+        "packet": "response",
+        "exchange": 1,
+        "answers_query": "invalid_name_empty-01-query.bin",
+        "ptr_target": "",
+        "delivered_during_lookup": "192.0.2.14",
+        "delay_ms": 0
+      },
+      "expect": {
+        "accepted": false,
+        "name": null,
+        "reason": "empty name, no invalid character to report"
+      }
+    }
+  ]
+}

@@ -1,0 +1,503 @@
+{
+	"module":	"tar",
+	"generator":	"test/tar_regression.c",
+	"vectors":	[{
+			"file":	"short-archives-01.tar",
+			"test":	"short-archives",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"short-archives-02.tar",
+			"test":	"short-archives",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"short-archives-03.tar",
+			"test":	"short-archives",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"short-archives-04.tar",
+			"test":	"short-archives",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"short-archives-05.tar",
+			"test":	"short-archives",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"short-archives-06.tar",
+			"test":	"short-archives",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"valid-size-boundaries-01.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	0,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"valid-size-boundaries-02.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"entry",
+						"size":	0
+					}]
+			}
+		}, {
+			"file":	"valid-size-boundaries-03.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	1,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"valid-size-boundaries-04.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"entry",
+						"size":	1
+					}]
+			}
+		}, {
+			"file":	"valid-size-boundaries-05.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	511,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"valid-size-boundaries-06.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"entry",
+						"size":	511
+					}]
+			}
+		}, {
+			"file":	"valid-size-boundaries-07.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	512,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"valid-size-boundaries-08.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"entry",
+						"size":	512
+					}]
+			}
+		}, {
+			"file":	"valid-size-boundaries-09.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	513,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"valid-size-boundaries-10.tar",
+			"test":	"valid-size-boundaries",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"entry",
+						"size":	513
+					}]
+			}
+		}, {
+			"file":	"invalid-size-fields-01.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-02.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"invalid-size-fields-03.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-04.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"invalid-size-fields-05.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-06.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"invalid-size-fields-07.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-08.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"invalid-size-fields-09.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-10.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"invalid-size-fields-11.tar",
+			"test":	"invalid-size-fields",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"invalid-size-fields-12.tar",
+			"test":	"invalid-size-fields",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"huge-size-01.tar",
+			"test":	"huge-size",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"target"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"huge-size-02.tar",
+			"test":	"huge-size",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"leading-space-size-01.tar",
+			"test":	"leading-space-size",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"bad-size"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	1,
+				"payload_offset":	512
+			}
+		}, {
+			"file":	"truncated-payloads-01.tar",
+			"test":	"truncated-payloads",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"entry"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"truncated-payloads-02.tar",
+			"test":	"truncated-payloads",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"short-sample-archive-01.tar",
+			"test":	"short-sample-archive",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"adlist.json"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"truncated-sample-archive-01.tar",
+			"test":	"truncated-sample-archive",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"adlist.json"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"missing-padding-01.tar",
+			"test":	"missing-padding",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"target"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"nonterminated-names-01.tar",
+			"test":	"nonterminated-names",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			},
+			"expect":	{
+				"found":	false,
+				"file_size":	0
+			}
+		}, {
+			"file":	"nonterminated-names-02.tar",
+			"test":	"nonterminated-names",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[]
+			}
+		}, {
+			"file":	"skip-offsets-01.tar",
+			"test":	"skip-offsets",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"target"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	3,
+				"payload_offset":	1536
+			}
+		}, {
+			"file":	"skip-offsets-02.tar",
+			"test":	"skip-offsets",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"skip",
+						"size":	1
+					}, {
+						"name":	"target",
+						"size":	3
+					}]
+			}
+		}, {
+			"file":	"skip-offsets-03.tar",
+			"test":	"skip-offsets",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"target"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	3,
+				"payload_offset":	1536
+			}
+		}, {
+			"file":	"skip-offsets-04.tar",
+			"test":	"skip-offsets",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"skip",
+						"size":	512
+					}, {
+						"name":	"target",
+						"size":	3
+					}]
+			}
+		}, {
+			"file":	"skip-offsets-05.tar",
+			"test":	"skip-offsets",
+			"op":	"find_file_in_tar",
+			"args":	{
+				"name":	"target"
+			},
+			"expect":	{
+				"found":	true,
+				"file_size":	3,
+				"payload_offset":	2048
+			}
+		}, {
+			"file":	"skip-offsets-06.tar",
+			"test":	"skip-offsets",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"skip",
+						"size":	513
+					}, {
+						"name":	"target",
+						"size":	3
+					}]
+			}
+		}, {
+			"file":	"malformed-second-entry-01.tar",
+			"test":	"malformed-second-entry",
+			"op":	"list_files_in_tar",
+			"args":	{
+			},
+			"expect":	{
+				"files":	[{
+						"name":	"first",
+						"size":	0
+					}]
+			}
+		}]
+}

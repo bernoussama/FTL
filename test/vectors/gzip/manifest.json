@@ -1,0 +1,98 @@
+{
+  "module": "gzip",
+  "generator": "test/gzip_regression.c",
+  "vectors": [
+    {
+      "file": "short_stream_is_rejected-01.gz",
+      "test": "short_stream_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "This is not a valid GZIP stream"
+      }
+    },
+    {
+      "file": "extra_field_overlapping_footer_is_rejected-01.gz",
+      "test": "extra_field_overlapping_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "Invalid GZIP header"
+      }
+    },
+    {
+      "file": "name_field_starting_in_footer_is_rejected-01.gz",
+      "test": "name_field_starting_in_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "GZIP file name field overruns into the footer"
+      }
+    },
+    {
+      "file": "name_field_missing_nul_before_footer_is_rejected-01.gz",
+      "test": "name_field_missing_nul_before_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "File name is missing or invalid in GZIP header"
+      }
+    },
+    {
+      "file": "name_field_terminator_in_footer_is_rejected-01.gz",
+      "test": "name_field_terminator_in_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "File name is missing or invalid in GZIP header"
+      }
+    },
+    {
+      "file": "comment_field_starting_in_footer_is_rejected-01.gz",
+      "test": "comment_field_starting_in_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "GZIP file comment field overruns into the footer"
+      }
+    },
+    {
+      "file": "comment_field_missing_nul_before_footer_is_rejected-01.gz",
+      "test": "comment_field_missing_nul_before_footer_is_rejected",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": true,
+        "c_log": "File comment is missing or invalid in GZIP header"
+      }
+    },
+    {
+      "file": "crc32_high_bit_decompresses-01.gz",
+      "test": "crc32_high_bit_decompresses",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": false,
+        "output_size": 4,
+        "output_sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+      }
+    },
+    {
+      "file": "empty_optional_fields_decompress-01.gz",
+      "test": "empty_optional_fields_decompress",
+      "op": "inflate_buffer",
+      "args": {},
+      "expect": {
+        "rejected": false,
+        "output_size": 28,
+        "output_sha256": "875bcbcf898f4f41a67b21af271385a90dc15e7e7bee911599102367bed91970"
+      }
+    }
+  ]
+}

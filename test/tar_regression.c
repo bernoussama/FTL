@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 // Include the implementation directly so the tests can exercise the
@@ -29,6 +30,7 @@
 #undef vfprintf
 #undef memcpy
 #undef memset
+#undef fopen
 
 // Header-field offsets the parser never reads (so they are not defined in
 // tar.c) but which the fixtures below need to assemble valid headers. The
@@ -198,17 +200,94 @@ static void write_entry_with_size_field(uint8_t *tar, const uint8_t size_field[T
 	finish_header(header);
 }
 
+// Test-vector export (--export-vectors DIR, see test/vectors/tar/README.md).
+// Every archive handed to FTL's tar code goes through list_archive() or
+// find_archive(), so these are the only places that record. Each call writes
+// its input as DIR/<test>-<NN>.tar and appends one manifest entry holding what
+// FTL returned. Without the flag they only call FTL and return its result.
+static const char *export_dir = NULL;
+static cJSON *export_vectors = NULL;
+static const char *export_test = "";
+static unsigned export_count = 0;
+static int export_errors = 0;
+
+static bool exporting(void)
+{
+	return export_dir != NULL;
+}
+
+static bool export_write(const char *path, const void *data, const size_t size)
+{
+	FILE *out = fopen(path, "wb");
+	if (out == NULL)
+		return false;
+
+	bool ok = size == 0 || fwrite(data, 1, size, out) == size;
+	if (fclose(out) != 0)
+		ok = false;
+	return ok;
+}
+
+// Takes ownership of args and observed.
+static void export_record(const char *op, cJSON *args, cJSON *observed, const uint8_t *tar, const size_t tar_size)
+{
+	char file[64];
+	char path[4096];
+
+	export_count++;
+	snprintf(file, sizeof(file), "%s-%02u.tar", export_test, export_count);
+
+	const int len = snprintf(path, sizeof(path), "%s/%s", export_dir, file);
+	if (len < 0 || (size_t)len >= sizeof(path) || !export_write(path, tar, tar_size)) {
+		fprintf(stderr, "cannot write test vector %s\n", file);
+		export_errors++;
+	}
+
+	cJSON *vector = cJSON_CreateObject();
+	cJSON_AddStringToObject(vector, "file", file);
+	cJSON_AddStringToObject(vector, "test", export_test);
+	cJSON_AddStringToObject(vector, "op", op);
+	cJSON_AddItemToObject(vector, "args", args);
+	cJSON_AddItemToObject(vector, "expect", observed);
+	cJSON_AddItemToArray(export_vectors, vector);
+}
+
 static cJSON *list_archive(const uint8_t *tar, const size_t tar_size)
 {
 	cJSON *files = list_files_in_tar(tar, tar_size);
 	expect(files != NULL, "list_files_in_tar returns an array");
+
+	if (exporting()) {
+		cJSON *observed = cJSON_CreateObject();
+		cJSON_AddItemToObject(observed, "files", files != NULL ? cJSON_Duplicate(files, 1) : cJSON_CreateNull());
+		export_record("list_files_in_tar", cJSON_CreateObject(), observed, tar, tar_size);
+	}
+
 	return files;
+}
+
+static const char *find_archive(const uint8_t *tar, const size_t tar_size, const char *name, size_t *file_size)
+{
+	const char *file = find_file_in_tar(tar, tar_size, name, file_size);
+
+	if (exporting()) {
+		cJSON *args = cJSON_CreateObject();
+		cJSON *observed = cJSON_CreateObject();
+		cJSON_AddStringToObject(args, "name", name);
+		cJSON_AddBoolToObject(observed, "found", file != NULL);
+		cJSON_AddNumberToObject(observed, "file_size", (double)*file_size);
+		if (file != NULL)
+			cJSON_AddNumberToObject(observed, "payload_offset", (double)(file - (const char *)tar));
+		export_record("find_file_in_tar", args, observed, tar, tar_size);
+	}
+
+	return file;
 }
 
 static void expect_find_missing(const uint8_t *tar, const size_t tar_size, const char *name, const char *message)
 {
 	size_t file_size = 12345;
-	const char *file = find_file_in_tar(tar, tar_size, name, &file_size);
+	const char *file = find_archive(tar, tar_size, name, &file_size);
 	expect(file == NULL, message);
 	expect(file_size == 0, "missing find resets fileSize");
 }
@@ -276,7 +355,7 @@ static void test_valid_size_boundaries(void)
 		write_entry(tar, 0, "entry", size, 'A' + (int)i);
 
 		size_t file_size = 999;
-		const char *file = find_file_in_tar(tar, tar_size, "entry", &file_size);
+		const char *file = find_archive(tar, tar_size, "entry", &file_size);
 		expect(file == (const char *)tar + TAR_BLOCK_SIZE, "valid size boundary is found");
 		expect(file_size == size, "valid size boundary reports expected fileSize");
 		if (size > 0)
@@ -333,7 +412,7 @@ static void test_leading_space_size_field_is_accepted(void)
 	tar[TAR_BLOCK_SIZE] = 'x';
 
 	size_t file_size = 0;
-	const char *file = find_file_in_tar(tar, sizeof(tar), "bad-size", &file_size);
+	const char *file = find_archive(tar, sizeof(tar), "bad-size", &file_size);
 	expect(file == (const char *)tar + TAR_BLOCK_SIZE, "leading-space size field is accepted");
 	expect(file_size == 1, "leading-space size field parses expected size");
 }
@@ -353,7 +432,7 @@ static void test_sample_short_archive_rejection(void)
 	expect(short_tar != NULL, "short archive allocation succeeds");
 	if (short_tar != NULL) {
 		size_t file_size = 0;
-		const char *file = find_file_in_tar(short_tar, 16, "adlist.json", &file_size);
+		const char *file = find_archive(short_tar, 16, "adlist.json", &file_size);
 		expect(file == NULL, "short archive lookup returns NULL");
 		expect(file_size == 0, "short archive lookup leaves fileSize zero");
 		free(short_tar);
@@ -371,7 +450,7 @@ static void test_sample_truncated_archive_rejection(void)
 		memcpy(truncated_tar + TAR_SIZE_OFFSET, "77777777777", strlen("77777777777"));
 
 		size_t file_size = 0;
-		const char *file = find_file_in_tar(truncated_tar, TAR_BLOCK_SIZE, "adlist.json", &file_size);
+		const char *file = find_archive(truncated_tar, TAR_BLOCK_SIZE, "adlist.json", &file_size);
 		expect(file == NULL, "truncated archive lookup returns NULL");
 		expect(file_size == 0, "truncated archive lookup leaves fileSize zero");
 		if (file != NULL && file_size > 0) {
@@ -425,7 +504,7 @@ static void test_skip_offsets_find_later_entries(void)
 
 		const size_t tar_size = second_offset + second_span;
 		size_t file_size = 0;
-		const char *file = find_file_in_tar(tar, tar_size, "target", &file_size);
+		const char *file = find_archive(tar, tar_size, "target", &file_size);
 		expect(file == (const char *)tar + second_offset + TAR_BLOCK_SIZE, "skip offset reaches later entry");
 		expect(file_size == 3, "skip offset returns later entry size");
 		expect(file != NULL && file[0] == 'T', "skip offset returns later entry payload");
@@ -475,6 +554,8 @@ static const struct tar_test tests[] = {
 static int run_test(const struct tar_test *test)
 {
 	failures = 0;
+	export_test = test->name;
+	export_count = 0;
 	test->run();
 
 	if (failures != 0) {
@@ -554,11 +635,72 @@ static void list_tests(void)
 		printf("%s\n", tests[i].name);
 }
 
+static bool export_manifest(void)
+{
+	cJSON *root = cJSON_CreateObject();
+	cJSON_AddStringToObject(root, "module", "tar");
+	cJSON_AddStringToObject(root, "generator", "test/tar_regression.c");
+	cJSON_AddItemToObject(root, "vectors", export_vectors);
+
+	char *text = cJSON_Print(root);
+	char path[4096];
+	const int len = snprintf(path, sizeof(path), "%s/manifest.json", export_dir);
+	bool ok = text != NULL && len >= 0 && (size_t)len < sizeof(path);
+
+	if (ok) {
+		FILE *out = fopen(path, "wb");
+		ok = out != NULL && fprintf(out, "%s\n", text) > 0;
+		if (out != NULL && fclose(out) != 0)
+			ok = false;
+	}
+	if (!ok)
+		fprintf(stderr, "cannot write %s/manifest.json\n", export_dir);
+
+	cJSON_free(text);
+	cJSON_Delete(root);
+	return ok;
+}
+
+// Runs every case in process, in table order, so the manifest is one ordered
+// list. (The default run forks per case for sanitizer isolation; a child could
+// not hand its vectors back to the parent.) A failing case still exports what
+// FTL returned, but the exit status reports it.
+static int export_vectors_to(const char *dir)
+{
+	if (mkdir(dir, 0777) != 0 && errno != EEXIST) {
+		fprintf(stderr, "cannot create %s: %s\n", dir, strerror(errno));
+		return 1;
+	}
+
+	export_dir = dir;
+	export_vectors = cJSON_CreateArray();
+
+	int status = 0;
+	for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); i++)
+		if (run_test(&tests[i]) != 0)
+			status = 1;
+
+	if (export_errors == 0 && !export_manifest())
+		export_errors++;
+	if (export_errors != 0)
+		status = 1;
+
+	return status;
+}
+
 int main(int argc, char **argv)
 {
 	if (argc == 2 && strcmp(argv[1], "--list") == 0) {
 		list_tests();
 		return 0;
+	}
+
+	if (argc >= 2 && strcmp(argv[1], "--export-vectors") == 0) {
+		if (argc != 3) {
+			fprintf(stderr, "usage: %s --export-vectors DIR\n", argv[0]);
+			return 2;
+		}
+		return export_vectors_to(argv[2]);
 	}
 
 	if (argc > 1) {

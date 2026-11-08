@@ -2337,6 +2337,22 @@ setup() {
   assert_output --partial "TXT_STAT_SERVERS_REGRESSION=PASS"
 }
 
+# bats test_tags=c-impl
+@test "Committed test vectors match what the C regression harnesses export" {
+  # test/vectors/ holds the harness inputs and observed results as data for
+  # the Rust rewrite. Re-export them and fail if they drifted from the harness
+  for harness in tar gzip ptr_response; do
+    dir="$(mktemp -d)"
+    run "./${harness}_regression" --export-vectors "${dir}"
+    assert_success
+    # The README is not exported (BusyBox diff has no --exclude)
+    cp "test/vectors/${harness}/README.md" "${dir}/"
+    run diff -r "test/vectors/${harness}" "${dir}"
+    rm -rf "${dir}"
+    assert_success
+  done
+}
+
 # bats test_tags=contract
 @test "SHA256 checksum working" {
   run bash -c './pihole-FTL sha256sum test/test.pem'

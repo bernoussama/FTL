@@ -1,0 +1,13 @@
+# gzip compression/decompression via "pihole-FTL gzip". Phase 3 module (input
+# users upload). The spec is the round trip and the header fields; the
+# compressed sizes in the messages come from the C deflate implementation and
+# are recorded for information only.
+compress-text     | $FTL gzip lorem.txt && gzip_header lorem.txt.gz && gzip -dc lorem.txt.gz | cmp - lorem.txt && echo roundtrip-ok
+compress-binary   | $FTL gzip binary.bin out.gz && gzip_header out.gz && gzip -dc out.gz | cmp - binary.bin && echo roundtrip-ok
+compress-empty    | $FTL gzip empty empty.gz && gzip_header empty.gz && gzip -dc empty.gz | cmp - empty && echo roundtrip-ok
+self-roundtrip    | $FTL gzip lorem.txt l.gz > /dev/null && $FTL gzip l.gz l.txt && cmp l.txt lorem.txt && echo roundtrip-ok
+decompress-system | gzip -n -9 -c lorem.txt > sys.gz && $FTL gzip sys.gz sys.txt && cmp sys.txt lorem.txt && echo roundtrip-ok
+decompress-name   | gzip -n -9 -c hello.txt > hello.txt.gz && rm hello.txt && $FTL gzip hello.txt.gz && cat hello.txt
+decompress-trunc  | gzip -n -9 -c lorem.txt | head -c 100 > t.gz && $FTL gzip t.gz t.txt; echo "exit $?"
+decompress-junk   | printf 'not a gzip file at all' > junk.gz && $FTL gzip junk.gz junk.txt; echo "exit $?"
+missing-file      | $FTL gzip does-not-exist.txt

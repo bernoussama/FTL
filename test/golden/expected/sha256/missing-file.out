@@ -1,0 +1,5 @@
+## command: $FTL sha256sum does-not-exist
+## exit: 1
+## stdout
+sha256_file(): Failed to open "does-not-exist" for reading: No such file or directory
+## stderr

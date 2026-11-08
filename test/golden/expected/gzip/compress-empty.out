@@ -1,0 +1,7 @@
+## command: $FTL gzip empty empty.gz && gzip_header empty.gz && gzip -dc empty.gz | cmp - empty && echo roundtrip-ok
+## exit: 0
+## stdout
+Compressed empty (0.0B) to empty.gz (32.0B), -inf% size reduction
+gzip header: id=1f8b cm=08 flg=01 mtime=<stripped> xfl=02 os=03
+roundtrip-ok
+## stderr

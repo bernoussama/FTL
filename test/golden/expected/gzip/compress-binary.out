@@ -1,0 +1,7 @@
+## command: $FTL gzip binary.bin out.gz && gzip_header out.gz && gzip -dc out.gz | cmp - binary.bin && echo roundtrip-ok
+## exit: 0
+## stdout
+Compressed binary.bin (4.2kB) to out.gz (603.0B), 86.1% size reduction
+gzip header: id=1f8b cm=08 flg=01 mtime=<stripped> xfl=02 os=03
+roundtrip-ok
+## stderr

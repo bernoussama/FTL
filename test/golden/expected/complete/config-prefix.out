@@ -1,0 +1,6 @@
+## command: $FTL --complete pihole-FTL --config debug.ne
+## exit: 0
+## stdout
+debug.networking
+debug.netlink
+## stderr

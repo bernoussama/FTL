@@ -1,0 +1,9 @@
+## command: $FTL --complete pihole-FTL --config dns.blocking.mode ''
+## exit: 0
+## stdout
+IP
+NX
+NULL
+IP_NODATA_AAAA
+NODATA
+## stderr

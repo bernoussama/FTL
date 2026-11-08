@@ -1,0 +1,5 @@
+## command: $FTL --complete pihole-FTL sqlite3 -h -
+## exit: 0
+## stdout
+-ni
+## stderr

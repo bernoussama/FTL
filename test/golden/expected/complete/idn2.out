@@ -1,0 +1,6 @@
+## command: $FTL --complete pihole-FTL idn2 -
+## exit: 0
+## stdout
+-d
+--decode
+## stderr

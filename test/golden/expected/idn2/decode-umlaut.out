@@ -1,0 +1,5 @@
+## command: $FTL idn2 -d xn--ste-pla.com
+## exit: 0
+## stdout
+äste.com
+## stderr

@@ -1,0 +1,6 @@
+## command: gzip -n -9 -c lorem.txt > sys.gz && $FTL gzip sys.gz sys.txt && cmp sys.txt lorem.txt && echo roundtrip-ok
+## exit: 0
+## stdout
+Uncompressed sys.gz (304.0B) to sys.txt (14.2kB), 4676.3% size increase
+roundtrip-ok
+## stderr

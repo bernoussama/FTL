@@ -1,0 +1,5 @@
+## command: $FTL sha256sum lorem.txt
+## exit: 0
+## stdout
+357316db2e66ee1f7266f57cb154851678f974ce2c3d9fd0741e05ee78494740  lorem.txt
+## stderr

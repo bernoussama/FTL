@@ -1,0 +1,8 @@
+## command: printf 'not a gzip file at all' > junk.gz && $FTL gzip junk.gz junk.txt; echo "exit $?"
+## exit: 0
+## stdout
+This is not a valid GZIP stream
+Failed to uncompress junk.gz
+Trying to free NULL pointer in inflate_file() (src/zip/gzip.c:<LINE>)
+exit 1
+## stderr

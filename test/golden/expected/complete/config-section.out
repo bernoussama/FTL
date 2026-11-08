@@ -1,0 +1,12 @@
+## command: $FTL --complete pihole-FTL --config dns.reply.
+## exit: 0
+## stdout
+dns.reply.host.force4
+dns.reply.host.IPv4
+dns.reply.host.force6
+dns.reply.host.IPv6
+dns.reply.blocking.force4
+dns.reply.blocking.IPv4
+dns.reply.blocking.force6
+dns.reply.blocking.IPv6
+## stderr

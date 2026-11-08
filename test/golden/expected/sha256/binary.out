@@ -1,0 +1,5 @@
+## command: $FTL sha256sum binary.bin
+## exit: 0
+## stdout
+bec96d4b0bfd66c9a0d3948f785b79b2802a81084ebf621a3546e00b705d5d1f  binary.bin
+## stderr

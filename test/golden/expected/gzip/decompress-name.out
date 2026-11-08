@@ -1,0 +1,6 @@
+## command: gzip -n -9 -c hello.txt > hello.txt.gz && rm hello.txt && $FTL gzip hello.txt.gz && cat hello.txt
+## exit: 0
+## stdout
+Uncompressed hello.txt.gz (26.0B) to hello.txt (6.0B), -76.9% size increase
+hello
+## stderr

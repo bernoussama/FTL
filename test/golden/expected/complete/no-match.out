@@ -1,0 +1,4 @@
+## command: $FTL --complete pihole-FTL zzz
+## exit: 0
+## stdout
+## stderr

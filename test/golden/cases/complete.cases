@@ -1,0 +1,14 @@
+# Shell completion via "pihole-FTL --complete". Phase 2 module.
+root-prefix      | $FTL --complete pihole-FTL versio
+root-all         | $FTL --complete pihole-FTL ''
+root-dash        | $FTL --complete pihole-FTL --
+config-prefix    | $FTL --complete pihole-FTL --config debug.ne
+config-section   | $FTL --complete pihole-FTL --config dns.reply.
+config-bool      | $FTL --complete pihole-FTL --config debug.networking t
+config-enum      | $FTL --complete pihole-FTL --config dns.blocking.mode ''
+gravity          | $FTL --complete pihole-FTL gravity c
+idn2             | $FTL --complete pihole-FTL idn2 -
+sqlite3          | $FTL --complete pihole-FTL sqlite3 -
+sqlite3-second   | $FTL --complete pihole-FTL sqlite3 -h -
+arp-scan         | $FTL --complete pihole-FTL arp-scan -
+no-match         | $FTL --complete pihole-FTL zzz

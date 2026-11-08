@@ -1,0 +1,5 @@
+## command: $FTL idn2
+## exit: 1
+## stdout
+Usage: /app/pihole-FTL idn2 [--decode] <domain>
+## stderr

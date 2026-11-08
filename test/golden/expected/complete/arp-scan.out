@@ -1,0 +1,6 @@
+## command: $FTL --complete pihole-FTL arp-scan -
+## exit: 0
+## stdout
+-a
+-x
+## stderr

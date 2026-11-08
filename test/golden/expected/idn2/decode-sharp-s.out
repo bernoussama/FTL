@@ -1,0 +1,5 @@
+## command: $FTL idn2 --decode xn--zca.de
+## exit: 0
+## stdout
+ß.de
+## stderr

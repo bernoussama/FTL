@@ -24,6 +24,11 @@
 #                      test/docker-test.sh test --filter 'Regex Test'
 #   shell            Open a shell in a prepared container (source in /app,
 #                    binary already staged as /app/pihole-FTL).
+#   golden [--check] [module...]
+#                    Record golden outputs of the C build into
+#                    test/golden/expected/ (default), or with --check compare
+#                    the binary under test against them. See
+#                    test/golden/record.sh.
 #   run <cmd...>     Run a command in a prepared container, e.g.
 #                      test/docker-test.sh run ./pihole-FTL -vv
 #
@@ -121,7 +126,7 @@ run_prepared() {
     exit 1
   fi
   mkdir -p "${LOG_DIR}"
-  docker run "${docker_args[@]}" -v "$(dirname "${bin}"):/ftl-bin:ro" -v "${LOG_DIR}:/logs" \
+  docker run "${docker_args[@]}" "${extra_mounts[@]}" -v "$(dirname "${bin}"):/ftl-bin:ro" -v "${LOG_DIR}:/logs" \
     -e "FTL_BIN=/ftl-bin/$(basename "${bin}")" -e "SKIP_PYTEST=${SKIP_PYTEST:-}" -e "GDB=${GDB:-}" -e "BATS_ARGS=${BATS_ARGS:-}" \
     -e "NO_UPLOAD=1" -e "LOG_DIR=/logs" -e "HOST_UID=$(id -u)" -e "HOST_GID=$(id -g)" \
     "${IMAGE}" bash -c "
@@ -136,6 +141,8 @@ run_prepared() {
       ${script}
     "
 }
+
+extra_mounts=()
 
 case "${cmd}" in
   build)
@@ -157,6 +164,17 @@ case "${cmd}" in
     ;;
   shell)
     run_prepared "exec bash"
+    ;;
+  golden)
+    mkdir -p "${REPO}/test/golden/expected"
+    extra_mounts=(-v "${REPO}/test/golden/expected:/golden")
+    printf -v golden_args '%q ' "$@"
+    [[ $# -eq 0 ]] && golden_args=""
+    run_prepared "set +e
+      FTL=./pihole-FTL GOLDEN_DIR=/golden bash test/golden/record.sh ${golden_args}
+      ret=\$?
+      chown -R \"\${HOST_UID}:\${HOST_GID}\" /golden /logs
+      exit \$ret"
     ;;
   run)
     printf -v user_cmd '%q ' "$@"

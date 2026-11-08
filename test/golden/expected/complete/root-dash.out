@@ -1,0 +1,19 @@
+## command: $FTL --complete pihole-FTL --
+## exit: 0
+## stdout
+--config
+--default-gateway
+--gen-x509
+--help
+--list-dhcp4
+--list-dhcp6
+--lua
+--luac
+--perf
+--read-x509
+--read-x509-key
+--teleporter
+--totp
+--tls-ciphers
+--v
+## stderr

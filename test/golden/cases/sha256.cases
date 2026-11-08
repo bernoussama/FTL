@@ -1,0 +1,7 @@
+# SHA256 (FIPS 180-2) via "pihole-FTL sha256sum". Phase 2 module.
+# Covers the empty input, single and multi-block inputs and all byte values.
+empty        | $FTL sha256sum empty
+hello        | $FTL sha256sum hello.txt
+lorem        | $FTL sha256sum lorem.txt
+binary       | $FTL sha256sum binary.bin
+missing-file | $FTL sha256sum does-not-exist

@@ -1,0 +1,8 @@
+## command: gzip -n -9 -c lorem.txt | head -c 100 > t.gz && $FTL gzip t.gz t.txt; echo "exit $?"
+## exit: 0
+## stdout
+File is empty or too large
+Failed to uncompress t.gz
+Trying to free NULL pointer in inflate_file() (src/zip/gzip.c:<LINE>)
+exit 1
+## stderr

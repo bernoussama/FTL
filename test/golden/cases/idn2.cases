@@ -1,0 +1,14 @@
+# IDNA2008 + TR46 non-transitional conversion via "pihole-FTL idn2". Phase 2
+# module. Non-transitional: ß stays ß (xn--zca.de), it is not mapped to "ss".
+encode-umlaut        | $FTL idn2 äste.com
+decode-umlaut        | $FTL idn2 -d xn--ste-pla.com
+encode-sharp-s       | $FTL idn2 ß.de
+decode-sharp-s       | $FTL idn2 --decode xn--zca.de
+encode-ascii-case    | $FTL idn2 Example.COM
+encode-unicode-case  | $FTL idn2 ÄSTE.com
+encode-multi-label   | $FTL idn2 bücher.münchen.de
+encode-emoji         | $FTL idn2 😀.com
+encode-long-label    | $FTL idn2 "$(printf 'ä%.0s' {1..70}).de"
+decode-invalid       | $FTL idn2 -d xn--zz.de
+decode-ascii         | $FTL idn2 -d example.com
+usage                | $FTL idn2

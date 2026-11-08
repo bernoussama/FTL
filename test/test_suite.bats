@@ -1094,20 +1094,20 @@ setup() {
   assert_line --index 0 "0.0.0.0"
   run bash -c 'dig AAAA regex-A @127.0.0.1'
   run bash -c 'dig AAAA regex-A @127.0.0.1 +short'
-  # No line may be the blocking reply. refute_output would only compare the
-  # whole output, refute_line --index 0 errors on empty output
+  # No line may be the blocking reply. refute_output without --regexp only
+  # compares the whole output, refute_line errors on empty output
   # (https://github.com/bats-core/bats-assert/issues/91)
-  refute_line "::"
+  refute_output --regexp $'(^|\n)::(\n|$)'
 }
 
 # bats test_tags=contract
 @test "Regex Test 38: Option \";querytype=!A\" working as expected (NOT matching A queries)" {
   run bash -c 'dig A regex-notA @127.0.0.1'
   run bash -c 'dig A regex-notA @127.0.0.1 +short'
-  # No line may be the blocking reply. refute_output would only compare the
-  # whole output, refute_line --index 0 errors on empty output
+  # No line may be the blocking reply. refute_output without --regexp only
+  # compares the whole output, refute_line errors on empty output
   # (https://github.com/bats-core/bats-assert/issues/91)
-  refute_line "0.0.0.0"
+  refute_output --regexp $'(^|\n)0\\.0\\.0\\.0(\n|$)'
   run bash -c 'dig AAAA regex-notA @127.0.0.1'
   run bash -c 'dig AAAA regex-notA @127.0.0.1 +short'
   assert_line --index 0 "::"

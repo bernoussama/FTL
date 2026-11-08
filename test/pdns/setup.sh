@@ -103,9 +103,9 @@ pdnsutil rrset add ftl. naptr.ftl. NAPTR '20 10 "s" "http+N2L+N2C+N2R" "" ftl.'
 pdnsutil rrset add ftl. mx.ftl. MX "50 ns1.ftl."
 
 # SVCB + HTTPS
-pdnsutil rrset add ftl. svcb.ftl. SVCB '1 port="80"'
-pdnsutil rrset add ftl. regex-multiple.ftl. SVCB '1 port="80"'
-pdnsutil rrset add ftl. regex-notMultiple.ftl. SVCB '1 port="80"'
+pdnsutil rrset add ftl. svcb.ftl. SVCB '1 . port=80'
+pdnsutil rrset add ftl. regex-multiple.ftl. SVCB '1 . port=80'
+pdnsutil rrset add ftl. regex-notMultiple.ftl. SVCB '1 . port=80'
 
 # HTTPS
 pdnsutil rrset add ftl. https.ftl. HTTPS '1 . alpn="h3,h2"'

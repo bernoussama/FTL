@@ -379,7 +379,7 @@ setup() {
 # bats test_tags=contract
 @test "Local DNS test: SVCB svcb.ftl" {
   run bash -c "dig SVCB svcb.ftl @127.0.0.1 +short"
-  assert_line --index 0 '1 port=\"80\".'
+  assert_line --index 0 '1 . port=80'
   assert_line --index 1 ""
 }
 

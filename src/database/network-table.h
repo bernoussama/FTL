@@ -18,6 +18,8 @@ bool create_network_addresses_table(sqlite3 *db);
 bool create_network_addresses_with_names_table(sqlite3 *db);
 bool create_network_addresses_network_id_index(sqlite3 *db);
 void parse_neighbor_cache(sqlite3 *db);
+#define MAXVENDORLEN 128
+bool getMACVendor(const char *hwaddr, char vendor[MAXVENDORLEN]);
 bool updateMACVendorRecords(sqlite3 *db);
 bool unify_hwaddr(sqlite3 *db);
 bool getMACfromIP(sqlite3 *db, char mac[MAXMACLEN], const char* ipaddr);

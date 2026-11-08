@@ -28,8 +28,6 @@
 // DHCPLEASESFILE
 #include "config/dnsmasq_config.h"
 
-#define MAXVENDORLEN 128
-static bool getMACVendor(const char *hwaddr, char vendor[MAXVENDORLEN]);
 enum arp_status { CLIENT_NOT_HANDLED, CLIENT_ARP_COMPLETE, CLIENT_ARP_INCOMPLETE } __attribute__ ((packed));
 
 bool create_network_table(sqlite3 *db)
@@ -1856,7 +1854,7 @@ unify_hwaddr_end:
  * - If the MAC address is "00:00:00:00:00:00", the function returns "virtual interface".
  * - If the MAC address is invalid (not 17 characters long or contains "ip-"), an empty string is returned.
  */
-static bool getMACVendor(const char *hwaddr, char vendor[MAXVENDORLEN])
+bool getMACVendor(const char *hwaddr, char vendor[MAXVENDORLEN])
 {
 	// Special handling for the loopback interface
 	if(strcmp(hwaddr, "00:00:00:00:00:00") == 0)

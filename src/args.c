@@ -64,6 +64,8 @@
 #include <idn2.h>
 // sha256sum()
 #include "files.h"
+// getMACVendor()
+#include "database/network-table.h"
 // resolveHostname()
 #include "resolve.h"
 // ntp_client()
@@ -684,6 +686,24 @@ void parse_args(int argc, char *argv[])
 
 		// Print result
 		printf("%s  %s\n", hex, argv[2]);
+		exit(EXIT_SUCCESS);
+	}
+
+	// MAC vendor lookup mode (test helper, not listed in help or completions)
+	// pihole-FTL macvendor <MAC> [<macvendor database>]
+	// Runs the same lookup as the network table, prints the vendor (an empty
+	// line if there is no match) and fails if the lookup itself fails
+	if((argc == 3 || argc == 4) && strcmp(argv[1], "macvendor") == 0)
+	{
+		// Enable stdout printing
+		cli_mode = true;
+		initConfig(&config);
+		if(argc == 4)
+			config.files.macvendor.v.s = argv[3];
+		char vendor[MAXVENDORLEN] = { 0 };
+		if(!getMACVendor(argv[2], vendor))
+			exit(EXIT_FAILURE);
+		printf("%s\n", vendor);
 		exit(EXIT_SUCCESS);
 	}
 

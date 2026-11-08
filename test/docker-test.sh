@@ -42,6 +42,9 @@
 #                (default: ${OUT_DIR}/logs).
 #   GDB          1 = attach gdb to FTL (see test/run.sh).
 #   BUILD_OPTS   Extra build.sh options, e.g. "clang" (also sets STATIC=false).
+#   RUST         1 = link the Rust library (rust/) into pihole-FTL
+#                (-DFTL_RUST=ON). Installs Alpine's rust/cargo in the build
+#                container, as the image does not ship them yet.
 #   IMAGE        Build image (default: ghcr.io/pi-hole/ftl-build:v2.19).
 #   PLATFORM     Docker platform (default: native), e.g. linux/arm64.
 
@@ -57,6 +60,14 @@ STATIC="true"
 if [[ "${BUILD_OPTS}" == *clang* ]]; then
   STATIC="false"
   CACHE_VOLUME="${CACHE_VOLUME}-clang"
+fi
+RUST="${RUST:-}"
+CMAKE_EXTRA=""
+RUST_SETUP=":"
+if [[ "${RUST}" == "1" ]]; then
+  CMAKE_EXTRA="-DFTL_RUST=ON"
+  RUST_SETUP="apk add --no-cache rust cargo > /dev/null"
+  CACHE_VOLUME="${CACHE_VOLUME}-rust"
 fi
 PLATFORM="${PLATFORM:-}"
 if [[ -n "${PLATFORM}" ]]; then
@@ -82,7 +93,7 @@ docker_args=(--rm -i -e "TERM=xterm" -e "CI_ARCH=${CI_ARCH}" -e "STATIC=${STATIC
 # GNU tar keeps mtimes, so incremental builds in the cache volume still work.
 # Files end up owned by root, which keeps git from complaining about ownership.
 copy_source='tar -C /src --exclude=./cmake --exclude=./cmake_ci --exclude=./build-docker \
-  --exclude=./test/libs --exclude=./node_modules --exclude="./pihole-FTL*" -cf - . \
+  --exclude=./test/libs --exclude=./rust/target --exclude=./node_modules --exclude="./pihole-FTL*" -cf - . \
   | tar -C /app --no-same-owner -xf -'
 
 REGRESSION_HARNESSES="tar_regression gzip_regression ptr_response_regression txt_stat_regression"
@@ -95,10 +106,11 @@ do_build() {
   docker run "${docker_args[@]}" -v "${CACHE_VOLUME}:/app/cmake" -v "${OUT_DIR}:/out" \
     -e "HOST_UID=$(id -u)" -e "HOST_GID=$(id -g)" "${IMAGE}" bash -c "
       set -e
+      ${RUST_SETUP}
       mkdir -p /app && ${copy_source}
       cd /app
       # Not \"build.sh test\": that would also run the test suite
-      bash build.sh '-DSTATIC=${STATIC} ${REGRESSION_FLAGS}' ${BUILD_OPTS}
+      bash build.sh '-DSTATIC=${STATIC} ${REGRESSION_FLAGS} ${CMAKE_EXTRA}' ${BUILD_OPTS}
       for f in pihole-FTL ${REGRESSION_HARNESSES}; do
         [ -f \"\$f\" ] && cp \"\$f\" /out/
       done

@@ -471,17 +471,12 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/null.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: blocked upstream with 0.0.0.0"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/null.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: blocked upstream with 0.0.0.0"
+  assert_line --partial "DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""
 }
 
 # bats test_tags=log-contract
@@ -497,16 +492,11 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: null.ftl is known as blocked upstream with NULL address (expires in"* ]]
-  [[ ${lines[@]} != *"DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: null.ftl is known as blocked upstream with NULL address (expires in"
+  refute_line --partial "DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""
 }
 
 # bats test_tags=log-contract
@@ -524,17 +514,12 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/null.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: blocked upstream with ::"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl AAAA ::\""* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/null.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded null.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: blocked upstream with ::"
+  assert_line --partial "DEBUG_QUERIES:   Adding RR: \"null.ftl AAAA ::\""
 }
 
 # bats test_tags=log-contract
@@ -559,17 +544,12 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: blocked upstream with known address (IPv4)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: blocked upstream with known address (IPv4)"
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"
 }
 
 # bats test_tags=log-contract
@@ -585,18 +565,13 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: umbrella.ftl is known as blocked upstream with known address (expires in"* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: umbrella.ftl is known as blocked upstream with known address (expires in"
   # Test for NOT forwarded ...
-  [[ ${lines[@]} != *"DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"* ]]
+  refute_line --partial "DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"
   # ... but cached
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** got cache reply: umbrella.ftl is 146.112.61.104"* ]]
+  assert_line --partial "DEBUG_QUERIES: **** got cache reply: umbrella.ftl is 146.112.61.104"
 }
 
 # bats test_tags=log-contract
@@ -612,17 +587,12 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/umbrella.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: blocked upstream with known address (IPv6)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/umbrella.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: blocked upstream with known address (IPv6)"
+  assert_line --partial "DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"
 }
 
 # bats test_tags=log-contract
@@ -639,16 +609,11 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella-multi.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded umbrella-multi.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella-multi.ftl -> EXTERNAL_BLOCKED_IP"* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella-multi.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded umbrella-multi.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella-multi.ftl -> EXTERNAL_BLOCKED_IP"
 }
 
 # bats test_tags=log-contract
@@ -663,17 +628,12 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/nxdomain.ede15.ftl is not blocked (domainlist ID: -1)"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: **** forwarded nxdomain.ede15.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/nxdomain.ede15.ftl -> EXTERNAL_BLOCKED_EDE15"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/nxdomain.ede15.ftl is not blocked (domainlist ID: -1)"
+  assert_line --partial "DEBUG_QUERIES: **** forwarded nxdomain.ede15.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES: DNS cache: A/127.0.0.1/nxdomain.ede15.ftl -> EXTERNAL_BLOCKED_EDE15"
+  assert_line --partial "DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""
 }
 
 # bats test_tags=log-contract
@@ -688,16 +648,11 @@ setup() {
   # Get number of lines in the log after the test
   after="$(grep -c ^ /var/log/pihole/FTL.log)"
 
-  # Extract relevant log lines
-  log="$(sed -n "${before},${after}p" /var/log/pihole/FTL.log)"
-  # Split log into array by newline
-  lines=()
-  while IFS= read -r line; do
-    lines+=("$line")
-  done <<< "${log}"
-  [[ ${lines[@]} == *"DEBUG_QUERIES: nxdomain.ede15.ftl is known as blocked upstream with EDE15 (expires in"* ]]
-  [[ ${lines[@]} != *"DEBUG_QUERIES: **** forwarded umbrella.ftl to 127.0.0.1#5555"* ]]
-  [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""* ]]
+  # Check the log lines written during this test, one by one
+  run sed -n "${before},${after}p" /var/log/pihole/FTL.log
+  assert_line --partial "DEBUG_QUERIES: nxdomain.ede15.ftl is known as blocked upstream with EDE15 (expires in"
+  refute_line --partial "DEBUG_QUERIES: **** forwarded nxdomain.ede15.ftl to 127.0.0.1#5555"
+  assert_line --partial "DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""
 }
 
 # bats test_tags=contract
@@ -1139,16 +1094,20 @@ setup() {
   assert_line --index 0 "0.0.0.0"
   run bash -c 'dig AAAA regex-A @127.0.0.1'
   run bash -c 'dig AAAA regex-A @127.0.0.1 +short'
-  # refute_line --index 0 "::" Would be more exact, but a BATS bug causes this to error (https://github.com/bats-core/bats-assert/issues/91)
-  refute_output "::"
+  # No line may be the blocking reply. refute_output would only compare the
+  # whole output, refute_line --index 0 errors on empty output
+  # (https://github.com/bats-core/bats-assert/issues/91)
+  refute_line "::"
 }
 
 # bats test_tags=contract
 @test "Regex Test 38: Option \";querytype=!A\" working as expected (NOT matching A queries)" {
   run bash -c 'dig A regex-notA @127.0.0.1'
   run bash -c 'dig A regex-notA @127.0.0.1 +short'
-  # refute_line --index 0 "0.0.0.0" Would be more exact, but a BATS bug causes this to error (https://github.com/bats-core/bats-assert/issues/91)
-  refute_output "0.0.0.0"
+  # No line may be the blocking reply. refute_output would only compare the
+  # whole output, refute_line --index 0 errors on empty output
+  # (https://github.com/bats-core/bats-assert/issues/91)
+  refute_line "0.0.0.0"
   run bash -c 'dig AAAA regex-notA @127.0.0.1'
   run bash -c 'dig AAAA regex-notA @127.0.0.1 +short'
   assert_line --index 0 "::"

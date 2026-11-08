@@ -6,6 +6,17 @@ bats_load_library 'bats-assert'
 bats_load_library 'bats-file'
 load 'bats_helper.bash'
 
+# Every test carries exactly one tag (select with bats --filter-tags <tag>):
+#   contract      behaviour any implementation must keep: DNS answers, API,
+#                 CLI output and exit codes, files, database contents
+#   log-contract  depends on the text of a log line (FTL.log, pihole.log, ...),
+#                 including wait-for on a log line
+#   c-impl        only meaningful for the C build or a C library's output format
+#                 (linking, backtraces, mbedTLS/civetweb dumps, C harnesses)
+# Precedence when several apply: c-impl > log-contract > contract.
+# Tests share one running FTL and depend on the order they run in, so a
+# filtered run does not set up the state of the tests it skips.
+
 # Log the current test description to the FTL log at the start of each test.
 # `setup()` is run by bats before every `@test` block.
 setup() {
@@ -13,6 +24,7 @@ setup() {
 }
 
 
+# bats test_tags=contract
 @test "Compare template and test TOML config files" {
   # We skip the first 5 lines of the files as they contain the version and
   # timestamp of the file creation/modification
@@ -20,11 +32,13 @@ setup() {
   refute_output
 }
 
+# bats test_tags=contract
 @test "Check FTL binary integrity" {
   run bash -c './pihole-FTL verify'
   assert_output --partial "Binary integrity check: OK"
 }
 
+# bats test_tags=contract
 @test "A leftover world-readable CLI password file is replaced" {
   # test/run.sh leaves a 0666 cli_pw behind before FTL starts and keeps it open
   holder=$(cat /tmp/cli_pw_holder.pid)
@@ -37,27 +51,32 @@ setup() {
   refute_output "stale"
 }
 
+# bats test_tags=contract
 @test "Running a second instance is detected and prevented" {
   run bash -c 'su pihole -s /bin/sh -c "./pihole-FTL -f"'
    assert_output --partial "CRIT: pihole-FTL is already running"
 }
 
+# bats test_tags=c-impl
 @test "dnsmasq options as expected" {
   run bash -c './pihole-FTL -vv | grep "dumpfile"'
   assert_line --index 0 "Features:        IPv6 GNU-getopt no-DBus no-UBus no-i18n IDN2 DHCP DHCPv6 Lua TFTP no-conntrack ipset no-nftset auth DNSSEC loop-detect inotify dumpfile"
   assert_line --index 1 ""
 }
 
+# bats test_tags=log-contract
 @test "Initial blocking status is enabled" {
   run bash -c 'grep -c "Blocking status is enabled" /var/log/pihole/FTL.log'
   refute_line --index 0 "0"
 }
 
+# bats test_tags=log-contract
 @test "Number of compiled regex filters as expected" {
   run bash -c 'grep "Compiled [0-9]* allow" /var/log/pihole/FTL.log'
   assert_line --partial --index 0 "Compiled 2 allow and 11 deny regex"
 }
 
+# bats test_tags=contract
 @test "Denied domain is blocked" {
   # The first, uncached answer carries the EDE too
   run bash -c "dig denied.ftl @127.0.0.1 | grep 'EDE: '"
@@ -77,6 +96,7 @@ setup() {
   assert_output ""
 }
 
+# bats test_tags=contract
 @test "Gravity domain is blocked" {
   # The first, uncached answer carries the EDE too
   run bash -c "dig gravity.ftl @127.0.0.1 | grep 'EDE: '"
@@ -88,6 +108,7 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Gravity domain is blocked (TCP)" {
   run bash -c "dig gravity.ftl @127.0.0.1 +tcp +short"
   assert_line --index 0 "0.0.0.0"
@@ -98,21 +119,25 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Gravity domain + allowed exact match is not blocked" {
   run bash -c "dig allowed.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.4"
 }
 
+# bats test_tags=contract
 @test "Gravity domain + allowed regex match is not blocked" {
   run bash -c "dig gravity-allowed.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.5"
 }
 
+# bats test_tags=contract
 @test "Gravity + antigravity exact matches are not blocked" {
   run bash -c "dig antigravity.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.6"
 }
 
+# bats test_tags=contract
 @test "Regex denied match is blocked" {
   # The first, uncached answer carries the EDE too
   run bash -c "dig regex5.ftl @127.0.0.1 | grep 'EDE: '"
@@ -124,61 +149,73 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Regex denylist mismatch is not blocked" {
   run bash -c "dig regexA.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.4"
 }
 
+# bats test_tags=contract
 @test "Regex denylist match + allowlist exact match is not blocked" {
   run bash -c "dig regex1.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.1"
 }
 
+# bats test_tags=contract
 @test "Regex denylist match + allowlist regex match is not blocked" {
   run bash -c "dig regex2.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.2"
 }
 
+# bats test_tags=contract
 @test "Client 2: Gravity match matching unassociated allowlist is blocked" {
   run bash -c "dig allowed.ftl -b 127.0.0.2 @127.0.0.1 +short"
   assert_line --index 0 "0.0.0.0"
 }
 
+# bats test_tags=contract
 @test "Client 2: Regex denylist match matching unassociated allowlist is blocked" {
   run bash -c "dig regex1.ftl -b 127.0.0.2 @127.0.0.1 +short"
   assert_line --index 0 "0.0.0.0"
 }
 
+# bats test_tags=contract
 @test "Same domain is not blocked for client 1 ..." {
   run bash -c "dig regex1.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.1"
 }
 
+# bats test_tags=contract
 @test "... or client 3" {
   run bash -c "dig regex1.ftl -b 127.0.0.3  @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.1"
 }
 
+# bats test_tags=contract
 @test "Client 2: Unassociated denylist match is not blocked" {
   run bash -c "dig denied.ftl -b 127.0.0.2 @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.3"
 }
 
+# bats test_tags=contract
 @test "Client 3: Exact denylist domain is not blocked" {
   run bash -c "dig denied.ftl -b 127.0.0.3 @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.3"
 }
 
+# bats test_tags=contract
 @test "Client 3: Regex denylist domain is not blocked" {
   run bash -c "dig regex1.ftl -b 127.0.0.3 @127.0.0.1 +short"
   assert_line --index 0 "192.168.2.1"
 }
 
+# bats test_tags=contract
 @test "Client 3: Gravity domain is not blocked" {
   run bash -c "dig a.ftl -b 127.0.0.3 @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.1"
 }
 
+# bats test_tags=log-contract
 @test "Client 4: Client is recognized by MAC address" {
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
   run bash -c "dig TXT CHAOS version.bind -b 127.0.0.4 @127.0.0.1 +short"
@@ -201,6 +238,7 @@ setup() {
   assert_line --index 0 "11"
 }
 
+# bats test_tags=log-contract
 @test "Client 5: Client is recognized by MAC address" {
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
   run bash -c "dig TXT CHAOS version.bind -b 127.0.0.5 @127.0.0.1 +short"
@@ -223,6 +261,7 @@ setup() {
   assert_line --index 0 "11"
 }
 
+# bats test_tags=log-contract
 @test "Client 6: Client is matched by the interface its query arrives on" {
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
   run bash -c "dig TXT CHAOS version.bind -b 127.0.0.6 @127.0.0.1 +short"
@@ -252,16 +291,19 @@ setup() {
   assert_line --index 0 "0"
 }
 
+# bats test_tags=contract
 @test "Normal query (A) is not blocked" {
   run bash -c "dig A a.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.1"
 }
 
+# bats test_tags=contract
 @test "Normal query (AAAA) is not blocked (TCP query)" {
   run bash -c "dig AAAA aaaa.ftl @127.0.0.1 +short +tcp"
   assert_line --index 0 "fe80::1c01"
 }
 
+# bats test_tags=log-contract
 @test "Mozilla canary domain is blocked with NXDOMAIN" {
   run bash -c "dig A use-application-dns.net @127.0.0.1"
   assert_line --partial --index 3 "status: NXDOMAIN"
@@ -269,18 +311,21 @@ setup() {
   assert_line --index 0 "1"
 }
 
+# bats test_tags=contract
 @test "Local DNS test: A a.ftl" {
   run bash -c "dig A a.ftl @127.0.0.1 +short"
   assert_line --index 0 "192.168.1.1"
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: AAAA aaaa.ftl" {
   run bash -c "dig AAAA aaaa.ftl @127.0.0.1 +short"
   assert_line --index 0 "fe80::1c01"
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: ANY any.ftl" {
   run bash -c "dig ANY any.ftl @127.0.0.1 +short"
   assert_line --partial "192.168.3.1"
@@ -289,54 +334,63 @@ setup() {
   refute_output --partial "Some example text"
 }
 
+# bats test_tags=contract
 @test "Local DNS test: CNAME cname-ok.ftl" {
   run bash -c "dig CNAME cname-ok.ftl @127.0.0.1 +short"
   assert_line --index 0 "a.ftl."
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: SRV srv.ftl" {
   run bash -c "dig SRV srv.ftl @127.0.0.1 +short"
   assert_line --index 0 "0 1 80 a.ftl."
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: PTR ptr.ftl" {
   run bash -c "dig PTR ptr.ftl @127.0.0.1 +short"
   assert_line --index 0 "ptr.ftl."
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: TXT txt.ftl" {
   run bash -c "dig TXT txt.ftl @127.0.0.1 +short"
   assert_line --index 0 "\"Some example text\""
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: NAPTR naptr.ftl" {
   run bash -c "dig NAPTR naptr.ftl @127.0.0.1 +short"
   assert_line --partial '10 10 "u" "smtp+E2U" "!.*([^.]+[^.]+)$!mailto:postmaster@$1!i" .'
   assert_line --partial '20 10 "s" "http+N2L+N2C+N2R" "" ftl.'
 }
 
+# bats test_tags=contract
 @test "Local DNS test: MX mx.ftl" {
   run bash -c "dig MX mx.ftl @127.0.0.1 +short"
   assert_line --index 0 "50 ns1.ftl."
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: SVCB svcb.ftl" {
   run bash -c "dig SVCB svcb.ftl @127.0.0.1 +short"
   assert_line --index 0 '1 port=\"80\".'
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Local DNS test: HTTPS https.ftl" {
   run bash -c "dig HTTPS https.ftl @127.0.0.1 +short"
   assert_line --index 0 '1 . alpn="h3,h2"'
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "CNAME inspection: Shallow CNAME is blocked" {
   # One query checks both the EDE of the first, uncached answer and the address
   run bash -c "dig A cname-1.ftl @127.0.0.1 | grep -e 'EDE: ' -e '^cname-1\.ftl\.'"
@@ -345,12 +399,14 @@ setup() {
   assert_line --index 2 ""
 }
 
+# bats test_tags=contract
 @test "CNAME inspection: Deep CNAME is blocked" {
   run bash -c "dig A cname-7.ftl @127.0.0.1 +short"
   assert_line --index 0 "0.0.0.0"
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "CNAME inspection: NODATA CNAME targets are blocked" {
   run bash -c "dig A a-cname.ftl @127.0.0.1 +short"
   assert_line --index 0 "0.0.0.0"
@@ -366,6 +422,7 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=log-contract
 @test "CNAME inspection: CNAME is blocked (TCP)" {
   run bash -c "dig A cname-tcp.ftl @127.0.0.1 +tcp +short"
   assert_line --index 0 "0.0.0.0"
@@ -374,21 +431,25 @@ setup() {
   assert_output "1"
 }
 
+# bats test_tags=contract
 @test "DNSSEC: SECURE domain is resolved" {
   run bash -c "dig A a.dnssec @127.0.0.1"
   assert_line --partial --index 3 "status: NOERROR"
 }
 
+# bats test_tags=contract
 @test "DNSSEC: BOGUS domain is rejected" {
   run bash -c "dig A a.bogus @127.0.0.1"
   assert_line --partial --index 3 "status: SERVFAIL"
 }
 
+# bats test_tags=contract
 @test "Special domain: NXDOMAIN is returned" {
   run bash -c "dig A mask.icloud.com @127.0.0.1"
   assert_line --partial --index 3 "status: NXDOMAIN"
 }
 
+# bats test_tags=contract
 @test "Special domain: Record is returned when explicitly allowed" {
   run bash -c "dig A mask.icloud.com -b 127.0.0.2 @127.0.0.1"
   assert_line --partial --index 3 "status: NOERROR"
@@ -396,6 +457,7 @@ setup() {
 
 # NXRA + RA unset cannot be tested with PowerDNS as upstream provider
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: NULL is recognized" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -422,6 +484,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: NULL is recognized (cached)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -446,6 +509,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl A 0.0.0.0\""* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: NULL is recognized (IPv6)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -473,6 +537,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"null.ftl AAAA ::\""* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: NULL is recognized (TCP)" {
   run bash -c "dig A null-tcp.ftl @127.0.0.1 +tcp +short"
   assert_line --index 0 "0.0.0.0"
@@ -481,6 +546,7 @@ setup() {
   assert_output "1"
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: IP is recognized" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -506,6 +572,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: IP is recognized (cached)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -532,6 +599,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES: **** got cache reply: umbrella.ftl is 146.112.61.104"* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: IP is recognized (IPv6)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -557,6 +625,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: AAAA/127.0.0.1/umbrella.ftl -> EXTERNAL_BLOCKED_IP"* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: IP is recognized (multi)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -582,6 +651,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES: DNS cache: A/127.0.0.1/umbrella-multi.ftl -> EXTERNAL_BLOCKED_IP"* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: EDE 15 is recognized" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -606,6 +676,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""* ]]
 }
 
+# bats test_tags=log-contract
 @test "Upstream blocked domain: EDE 15 is recognized (cached)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -629,6 +700,7 @@ setup() {
   [[ ${lines[@]} == *"DEBUG_QUERIES:   Adding RR: \"nxdomain.ede15.ftl A 0.0.0.0\""* ]]
 }
 
+# bats test_tags=contract
 @test "ABP-style matching working as expected" {
   run bash -c "dig A special.gravity.ftl @127.0.0.1 +short"
   assert_line --index 0 "0.0.0.0"
@@ -639,6 +711,7 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "pihole-FTL.db schema is as expected" {
   run bash -c './pihole-FTL sqlite3 /etc/pihole/pihole-FTL.db .dump'
   assert_line --partial "CREATE TABLE IF NOT EXISTS \"query_storage\" (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, type INTEGER NOT NULL, status INTEGER NOT NULL, domain INTEGER NOT NULL, client INTEGER NOT NULL, forward INTEGER, additional_info INTEGER, reply_type INTEGER, reply_time REAL, dnssec INTEGER, list_id INTEGER, ede INTEGER);"
@@ -665,6 +738,7 @@ setup() {
   assert_line --partial "CREATE INDEX network_addresses_network_id_index ON network_addresses (network_id);"
 }
 
+# bats test_tags=contract
 @test "Ownership, permissions and type of pihole-FTL.db correct" {
   run bash -c 'ls -l /etc/pihole/pihole-FTL.db'
   # Depending on the shell (x86_64-musl is built on busybox) there can be one or multiple spaces between user and group
@@ -674,6 +748,7 @@ setup() {
   assert_line --partial --index 0 "/etc/pihole/pihole-FTL.db: SQLite 3.x database"
 }
 
+# bats test_tags=contract
 @test "MAC vendor lookup resolves MA-L, MA-M and MA-S blocks (longest prefix)" {
   # The macvendor table stores Wireshark manuf keys verbatim: a plain "XX:XX:XX"
   # for /24 (MA-L) and a masked form for the sub-divided blocks, e.g.
@@ -718,6 +793,7 @@ setup() {
   rm -f "${DB}"
 }
 
+# bats test_tags=contract
 @test "Internal PTR resolver reports a refused connection, not a timeout" {
   # Nothing listens on port 5399, so the kernel answers the query with an
   # ICMP port-unreachable. The resolver socket is connected, so that is
@@ -731,6 +807,7 @@ setup() {
   refute_output --partial "Timed out after"
 }
 
+# bats test_tags=contract
 @test "Test fail on invalid CLI argument" {
   run bash -c './pihole-FTL abc'
   assert_line --index 0 "pihole-FTL: invalid option -- 'abc'"
@@ -738,11 +815,13 @@ setup() {
   assert_line --index 2 "Try './pihole-FTL --help' for more information"
 }
 
+# bats test_tags=contract
 @test "Help CLI argument return help text" {
   run bash -c './pihole-FTL help'
   assert_line --partial --index 0 "The Pi-hole FTL engine - "
 }
 
+# bats test_tags=contract
 @test "CLI config output as expected" {
   # Partial match printing
   run bash -c './pihole-FTL --config dns.upstream'
@@ -759,6 +838,7 @@ setup() {
   assert_line --index 0 "80o,443os,[::]:80o,[::]:443os"
 }
 
+# bats test_tags=c-impl
 @test "'pihole-FTL backtrace' generates a structured backtrace" {
   run bash -c './pihole-FTL backtrace'
   printf "%s\n" "${lines[@]}"
@@ -777,6 +857,7 @@ setup() {
   assert_output --partial "--- end of backtrace"
 }
 
+# bats test_tags=c-impl
 @test "'pihole-FTL backtrace' resolves source locations when addr2line is present" {
   if ! command -v addr2line >/dev/null 2>&1; then
     skip "addr2line not installed; resolution-dependent assertion skipped"
@@ -790,6 +871,7 @@ setup() {
   refute_output --partial "addr2line is not installed"
 }
 
+# bats test_tags=c-impl
 @test "'pihole-FTL backtrace' prints resolve guidance when addr2line is unavailable" {
   # Hide addr2line via an empty PATH (the binary itself is launched by an
   # explicit relative path, so it still runs). The directly spawned addr2line
@@ -809,11 +891,13 @@ setup() {
 # log scan in run.sh, which runs after both BATS and pytest complete.
 
 # Regex tests
+# bats test_tags=log-contract
 @test "Compiled deny regex as expected" {
   run bash -c 'grep -c "Compiling deny regex 0 (DB ID 6): regex\[0-9\].ftl" /var/log/pihole/FTL.log'
   assert_line --index 0 "1"
 }
 
+# bats test_tags=log-contract
 @test "Compiled allow regex as expected" {
   run bash -c 'grep -c "Compiling allow regex 0 (DB ID 3): regex2" /var/log/pihole/FTL.log'
   assert_line --index 0 "1"
@@ -821,197 +905,234 @@ setup() {
   assert_line --index 0 "1"
 }
 
+# bats test_tags=contract
 @test "Regex Test 1: \"regex7.ftl\" vs. [database regex]: MATCH" {
   run bash -c './pihole-FTL regex-test "regex7.ftl"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 2: \"a\" vs. \"a\": MATCH" {
   run bash -c './pihole-FTL regex-test "a" "a"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 3: \"aa\" vs. \"^[a-z]{1,3}$\": MATCH" {
   run bash -c './pihole-FTL regex-test "aa" "^[a-z]{1,3}$"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 4: \"aaaa\" vs. \"^[a-z]{1,3}$\": NO MATCH" {
   run bash -c './pihole-FTL regex-test "aaaa" "^[a-z]{1,3}$"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 5: \"aa\" vs. \"^a(?#some comment)a$\": MATCH (comments)" {
   run bash -c './pihole-FTL regex-test "aa" "^a(?#some comment)a$"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 6: \"abc.abc\" vs. \"([a-z]*)\.\1\": MATCH" {
   run bash -c './pihole-FTL regex-test "abc.abc" "([a-z]*)\.\1"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 7: Complex character set: MATCH" {
   run bash -c './pihole-FTL regex-test "__abc#LMN012$x%yz789*" "[[:digit:]a-z#$%]+"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 8: Range expression: MATCH" {
   run bash -c './pihole-FTL regex-test "!ABC-./XYZ~" "[--Z]+"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 9: Back reference: \"aabc\" vs. \"(a)\1{1,2}\": MATCH" {
   run bash -c './pihole-FTL regex-test "aabc" "(a)\1{1,2}"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 10: Back reference: \"foo\" vs. \"(.)\1$\": MATCH" {
   run bash -c './pihole-FTL regex-test "foo" "(.)\1$"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 11: Back reference: \"foox\" vs. \"(.)\1$\": NO MATCH" {
   run bash -c './pihole-FTL regex-test "foox" "(.)\1$"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 12: Back reference: \"1234512345\" vs. \"([0-9]{5})\1\": MATCH" {
   run bash -c './pihole-FTL regex-test "1234512345" "([0-9]{5})\1"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 13: Back reference: \"12345\" vs. \"([0-9]{5})\1\": NO MATCH" {
   run bash -c './pihole-FTL regex-test "12345" "([0-9]{5})\1"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 14: Complex back reference: MATCH" {
   run bash -c './pihole-FTL regex-test "cat.foo.dog---cat%dog!foo" "(cat)\.(foo)\.(dog)---\1%\3!\2"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 15: Approximate matching, 0 errors: MATCH" {
   run bash -c './pihole-FTL regex-test "foobarzap" "foo(bar){~1}zap"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 16: Approximate matching, 1 error (inside fault-tolerant area): MATCH" {
   run bash -c './pihole-FTL regex-test "foobrzap" "foo(bar){~1}zap"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 17: Approximate matching, 1 error (outside fault-tolert area): NO MATCH" {
   run bash -c './pihole-FTL regex-test "foxbrazap" "foo(bar){~1}zap"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 18: Approximate matching, 0 global errors: MATCH" {
   run bash -c './pihole-FTL regex-test "foobar" "^(foobar){~1}$"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 19: Approximate matching, 1 global error: MATCH" {
   run bash -c './pihole-FTL regex-test "cfoobar" "^(foobar){~1}$"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 20: Approximate matching, 2 global errors: NO MATCH" {
   run bash -c './pihole-FTL regex-test "ccfoobar" "^(foobar){~1}$"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 21: Approximate matching, insert + substitute: MATCH" {
   run bash -c './pihole-FTL regex-test "oobargoobaploowap" "(foobar){+2#2~2}"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 22: Approximate matching, insert + delete: MATCH" {
   run bash -c './pihole-FTL regex-test "3oifaowefbaoraofuiebofasebfaobfaorfeoaro" "(foobar){+1 -2}"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 23: Approximate matching, insert + delete (insufficient): NO MATCH" {
   run bash -c './pihole-FTL regex-test "3oifaowefbaoraofuiebofasebfaobfaorfeoaro" "(foobar){+1 -1}"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 24: Useful hint for invalid regular expression \"f{x}\": Invalid contents of {}" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "f{x}"'
   assert_line --index 1 "Invalid regex CLI filter \"f{x}\": Invalid contents of {}"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 25: Useful hint for invalid regular expression \"a**\": Invalid use of repetition operators" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "a**"'
   assert_line --index 1 "Invalid regex CLI filter \"a**\": Invalid use of repetition operators"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 26: Useful hint for invalid regular expression \"x\\\": Trailing backslash" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "x\\"'
   assert_line --index 1 "Invalid regex CLI filter \"x\\\": Trailing backslash"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 27: Useful hint for invalid regular expression \"[\": Missing ']'" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "["'
   assert_line --index 1 "Invalid regex CLI filter \"[\": Missing ']'"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 28: Useful hint for invalid regular expression \"(\": Missing ')'" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "("'
   assert_line --index 1 "Invalid regex CLI filter \"(\": Missing ')'"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 29: Useful hint for invalid regular expression \"{1\": Missing '}'" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "{1"'
   assert_line --index 1 "Invalid regex CLI filter \"{1\": Missing '}'"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 30: Useful hint for invalid regular expression \"[[.foo.]]\": Unknown collating element" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "[[.foo.]]"'
   assert_line --index 1 "Invalid regex CLI filter \"[[.foo.]]\": Unknown collating element"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 31: Useful hint for invalid regular expression \"[[:foobar:]]\": Unknown character class name" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "[[:foobar:]]"'
   assert_line --index 1 "Invalid regex CLI filter \"[[:foobar:]]\": Unknown character class name"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 32: Useful hint for invalid regular expression \"(a)\\2\": Invalid back reference" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "(a)\\2"'
   assert_line --index 1 "Invalid regex CLI filter \"(a)\\2\": Invalid back reference"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 33: Useful hint for invalid regular expression \"[g-1]\": Invalid character range" {
   run bash -c './pihole-FTL regex-test "fbcdn.net" "[g-1]"'
   assert_line --index 1 "Invalid regex CLI filter \"[g-1]\": Invalid character range"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 34: Quiet mode: Match = Return code 0, nothing else" {
   run bash -c './pihole-FTL -q regex-test "fbcdn.net" "f"'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Regex Test 35: Quiet mode: Invalid regex = Return code 1, with error message" {
   run bash -c './pihole-FTL -q regex-test "fbcdn.net" "g{x}"'
   assert_line --index 0 "Invalid regex CLI filter \"g{x}\": Invalid contents of {}"
   assert_failure 1
 }
 
+# bats test_tags=contract
 @test "Regex Test 36: Quiet mode: No Match = Return code 2, nothing else" {
   run bash -c './pihole-FTL -q regex-test "fbcdn.net" "g"'
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 37: Option \";querytype=A\" working as expected (ONLY matching A queries)" {
   run bash -c 'dig A regex-A @127.0.0.1'
   run bash -c 'dig A regex-A @127.0.0.1 +short'
@@ -1022,6 +1143,7 @@ setup() {
   refute_output "::"
 }
 
+# bats test_tags=contract
 @test "Regex Test 38: Option \";querytype=!A\" working as expected (NOT matching A queries)" {
   run bash -c 'dig A regex-notA @127.0.0.1'
   run bash -c 'dig A regex-notA @127.0.0.1 +short'
@@ -1032,6 +1154,7 @@ setup() {
   assert_line --index 0 "::"
 }
 
+# bats test_tags=contract
 @test "Regex Test 39: Option \";invert\" working as expected (match is inverted)" {
   run bash -c './pihole-FTL -q regex-test "f" "g;invert"'
   assert_success
@@ -1039,26 +1162,31 @@ setup() {
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "Regex Test 40: Option \";querytype\" sanity checks" {
   run bash -c './pihole-FTL regex-test "f" g\;querytype=!A\;querytype=A'
   assert_line --partial "Overwriting previous querytype setting (multiple \"querytype=...\" found)"
 }
 
+# bats test_tags=contract
 @test "Regex Test 41: Option \"^;reply=NXDOMAIN\" working as expected" {
   run bash -c 'dig A regex-NXDOMAIN @127.0.0.1'
   assert_line --partial --index 3 "status: NXDOMAIN"
 }
 
+# bats test_tags=contract
 @test "Regex Test 42: Option \"^;reply=NODATA\" working as expected" {
   run bash -c 'dig A regex-NODATA @127.0.0.1'
   assert_line --partial --index 3 "status: NOERROR"
 }
 
+# bats test_tags=contract
 @test "Regex Test 43: Option \";reply=REFUSED\" working as expected" {
   run bash -c 'dig A regex-REFUSED @127.0.0.1'
   assert_line --partial --index 3 "status: REFUSED"
 }
 
+# bats test_tags=contract
 @test "Regex Test 44: Option \";reply=1.2.3.4\" working as expected" {
   run bash -c 'dig A regex-REPLYv4 @127.0.0.1 +short'
   assert_line --index 0 "1.2.3.4"
@@ -1066,6 +1194,7 @@ setup() {
   assert_line --index 0 "::"
 }
 
+# bats test_tags=contract
 @test "Regex Test 45: Option \";reply=fe80::1234\" working as expected" {
   run bash -c 'dig A regex-REPLYv6 @127.0.0.1 +short'
   assert_line --index 0 "0.0.0.0"
@@ -1073,6 +1202,7 @@ setup() {
   assert_line --index 0 "fe80::1234"
 }
 
+# bats test_tags=contract
 @test "Regex Test 46: Option \";reply=1.2.3.4;reply=fe80::1234\" working as expected" {
   run bash -c 'dig A regex-REPLYv46 @127.0.0.1 +short'
   assert_line --index 0 "1.2.3.4"
@@ -1080,30 +1210,35 @@ setup() {
   assert_line --index 0 "fe80::1234"
 }
 
+# bats test_tags=contract
 @test "Regex Test 47: Option \";querytype=A\" reported on CLI" {
   run bash -c './pihole-FTL regex-test "f" f\;querytype=A'
   assert_success
   assert_line --partial --index 5 "- A"
 }
 
+# bats test_tags=contract
 @test "Regex Test 48: Option \";querytype=!TXT\" reported on CLI" {
   run bash -c './pihole-FTL regex-test "f" f\;querytype=!TXT'
   assert_success
   refute_line --partial "- TXT"
 }
 
+# bats test_tags=contract
 @test "Regex Test 49: Option \";reply=NXDOMAIN\" reported on CLI" {
   run bash -c './pihole-FTL regex-test "f" f\;reply=NXDOMAIN'
   assert_success
   assert_line --index 4 "    Hint: This regex forces reply type NXDOMAIN"
 }
 
+# bats test_tags=contract
 @test "Regex Test 50: Option \";invert\" reported on CLI" {
   run bash -c './pihole-FTL regex-test "f" g\;invert'
   assert_success
   assert_line --index 4 "    Hint: This regex is inverted"
 }
 
+# bats test_tags=contract
 @test "Regex Test 51: Option \";querytype=A,HTTPS\" reported on CLI" {
   run bash -c './pihole-FTL regex-test "f" f\;querytype=A,HTTPS'
   assert_success
@@ -1111,6 +1246,7 @@ setup() {
   assert_line --partial --index 6 "- HTTPS"
 }
 
+# bats test_tags=contract
 @test "Regex Test 52: Option \";querytype=ANY,HTTPS,SVCB;reply=refused\" working as expected (ONLY matching ANY, HTTPS or SVCB queries)" {
   run bash -c 'dig A regex-multiple.ftl @127.0.0.1'
   assert_line --partial --index 3 "status: NOERROR"
@@ -1124,6 +1260,7 @@ setup() {
   assert_line --partial --index 3 "status: REFUSED"
 }
 
+# bats test_tags=contract
 @test "Regex Test 53: Option \";querytype=!ANY,HTTPS,SVCB;reply=refused\" working as expected (NOT matching ANY, HTTPS or SVCB queries)" {
   run bash -c 'dig A regex-notMultiple.ftl @127.0.0.1'
   assert_line --partial --index 3 "status: REFUSED"
@@ -1137,16 +1274,19 @@ setup() {
   assert_line --partial --index 3 "status: NOERROR"
 }
 
+# bats test_tags=contract
 @test "API addresses reported correctly by CHAOS TXT domain.api.ftl" {
   run bash -c 'dig CHAOS TXT domain.api.ftl +short @127.0.0.1'
   assert_line --index 0 '"http://pi.hole:80/api/" "https://pi.hole:443/api/"'
 }
 
+# bats test_tags=contract
 @test "API addresses reported correctly by CHAOS TXT local.api.ftl" {
   run bash -c 'dig CHAOS TXT local.api.ftl +short @127.0.0.1'
   assert_line --index 0 '"http://127.0.0.1:80/api/" "https://127.0.0.1:443/api/" "http://[::1]:80/api/" "https://[::1]:443/api/"'
 }
 
+# bats test_tags=contract
 @test "API addresses reported by CHAOS TXT api.ftl identical to domain.api.ftl" {
   run bash -c 'dig CHAOS TXT api.ftl +short @127.0.0.1'
   api="${lines[0]}"
@@ -1163,6 +1303,7 @@ setup() {
 # In this test, we use ldd and check for the dependency arrow "=>" to check if
 # our generated binary depends on shared libraries in the way we expect it to
 
+# bats test_tags=c-impl
 @test "Dependence on shared libraries" {
   run bash -c 'ldd ./pihole-FTL'
   if [ "${STATIC}" != "true" ]; then
@@ -1184,6 +1325,7 @@ setup() {
 # In this test, we use "file" to confirm the absence of the dependence
 # on an interpreter for the static binary.
 
+# bats test_tags=c-impl
 @test "Dependence on specific interpreter" {
   run bash -c 'file ./pihole-FTL'
   if [ "${STATIC}" != "true" ]; then
@@ -1193,6 +1335,7 @@ setup() {
   fi
 }
 
+# bats test_tags=c-impl
 @test "Compiler version is correctly reported on startup" {
   compiler_version="$(${CC} --version | head -n1)" && export compiler_version
   run bash -c 'grep "Compiled for" /var/log/pihole/FTL.log'
@@ -1200,11 +1343,13 @@ setup() {
   assert_line --partial --index 0 "using ${compiler_version}"
 }
 
+# bats test_tags=log-contract
 @test "No errors on setting busy handlers for the databases" {
   run bash -c 'grep -c "Cannot set busy handler" /var/log/pihole/FTL.log'
   assert_line --index 0 "0"
 }
 
+# bats test_tags=log-contract
 @test "Blocking status is correctly logged in pihole.log" {
   run bash -c 'grep -c "gravity blocked gravity.ftl is 0.0.0.0" /var/log/pihole/pihole.log'
   assert_line --index 0 "4"
@@ -1212,17 +1357,20 @@ setup() {
 
 # NOTE: HTTP 404 tests moved to pytest (test/api/test_api.py)
 
+# bats test_tags=contract
 @test "LUA: Interpreter returns FTL version" {
   run bash -c './pihole-FTL lua -e "print(pihole.ftl_version())"'
   assert_line --partial --index 0 "v"
 }
 
+# bats test_tags=contract
 @test "LUA: Interpreter loads and enabled bundled library \"inspect\"" {
   run bash -c './pihole-FTL lua -e "print(inspect(inspect))"'
   assert_line --partial '_DESCRIPTION = "human-readable representations of tables'
   assert_line --partial '_VERSION = "inspect.lua 3.1.0"'
 }
 
+# bats test_tags=contract
 @test "LUA: pihole.fileversion() returns the full modification time" {
   # 2100-01-01 does not fit into a 32-bit integer
   touch -d @4102444800 /tmp/fileversion.js
@@ -1231,6 +1379,7 @@ setup() {
   assert_line --index 0 "/tmp/fileversion.js?v=4102444800"
 }
 
+# bats test_tags=log-contract
 @test "EDNS(0) analysis working as expected" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -1261,6 +1410,7 @@ setup() {
   assert_line --index 0 "1"
 }
 
+# bats test_tags=log-contract
 @test "EDNS(0) MAC groups ECS addresses in network table" {
   mac="02:00:00:00:00:01"
   ipv4="192.168.47.97"
@@ -1300,6 +1450,7 @@ setup() {
   assert_output "${expected}"
 }
 
+# bats test_tags=log-contract
 @test "Message truncation is detected at exactly the buffer size" {
   # "dnsmasq: " + message renders to 1024 (truncated) and 1023 bytes (fits) in plain[1024]
   pad="$(head -c 999 /dev/zero | tr '\0' a)"
@@ -1318,6 +1469,7 @@ setup() {
   assert_success
 }
 
+# bats test_tags=contract
 @test "Local interfaces are added to the network table" {
   # Use the first interface with a hardware address, fall back to lo
   iface="lo"
@@ -1344,6 +1496,7 @@ setup() {
   assert_output "${expected}"
 }
 
+# bats test_tags=log-contract
 @test "alias-client is imported and used for configured client" {
   run bash -c 'grep -c "Added alias-client \"some-aliasclient\" (aliasclient-0) with FTL ID 0" /var/log/pihole/FTL.log'
   assert_line --index 0 "1"
@@ -1353,6 +1506,7 @@ setup() {
   assert_line --index 0 "1"
 }
 
+# bats test_tags=log-contract
 @test "EDNS(0) ECS skipped for loopback address (IPv4)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -1370,6 +1524,7 @@ setup() {
   assert_line --partial "EDNS0: CLIENT SUBNET: Skipped 127.0.0.1/32 (IPv4 loopback address)"
 }
 
+# bats test_tags=log-contract
 @test "EDNS(0) ECS skipped for loopback address (IPv6)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -1387,22 +1542,26 @@ setup() {
   assert_line --partial "EDNS0: CLIENT SUBNET: Skipped ::1/128 (IPv6 loopback address)"
 }
 
+# bats test_tags=contract
 @test "Embedded SQLite3 shell available and functional" {
   run bash -c './pihole-FTL sqlite3 -help'
   assert_line --index 0 "Usage: sqlite3 [OPTIONS] [FILENAME [SQL...]]"
 }
 
+# bats test_tags=contract
 @test "Embedded SQLite3 shell is called for .db file" {
   run bash -c './pihole-FTL abc.db ".version"'
   assert_line --partial --index 0 "SQLite 3."
 }
 
+# bats test_tags=contract
 @test "Embedded SQLite3 shell prints FTL version in interactive mode" {
   # shell.c contains a call to print_FTL_version
   run bash -c "echo -e '.quit\n' | ./pihole-FTL sqlite3 -interactive"
   assert_line --partial --index 0 "Pi-hole FTL"
 }
 
+# bats test_tags=contract
 @test "Embedded SQLite3 shell ignores .sqliterc \"-ni\"" {
   # Install .sqliterc file at current home directory
   cp test/sqliterc ~/.sqliterc
@@ -1413,6 +1572,7 @@ setup() {
   rm ~/.sqliterc
 }
 
+# bats test_tags=contract
 @test "Embedded LUA engine is called for .lua file" {
   echo 'print("Hello from LUA")' > abc.lua
   run bash -c './pihole-FTL abc.lua'
@@ -1420,23 +1580,27 @@ setup() {
   rm abc.lua
 }
 
+# bats test_tags=contract
 @test "Pi-hole PTR generation check" {
   run bash -c "bash test/hostnames.sh | tee ptr.log"
   refute_line --partial "ERROR"
 }
 
+# bats test_tags=log-contract
 @test "No missing config items in pihole.toml" {
   run bash -c 'grep "DEBUG_CONFIG: " /var/log/pihole/FTL.log'
   run bash -c 'grep "DEBUG_CONFIG: " /var/log/pihole/FTL.log | grep -c "DOES NOT EXIST"'
   assert_line --index 0 "0"
 }
 
+# bats test_tags=c-impl
 @test "Check dnsmasq warnings in source code" {
   run bash -c "bash test/dnsmasq_warnings.sh"
   refute_output
   
 }
 
+# bats test_tags=contract
 @test "Pi-hole use interface-dependent replies for pi.hole" {
   run bash -c "dig A pi.hole +short @127.0.0.1"
   assert_line --index 0 "127.0.0.1"
@@ -1445,6 +1609,7 @@ setup() {
   assert_line --index 0 "::1"
 }
 
+# bats test_tags=contract
 @test "Pi-hole uses interface-dependent replies inside CNAME chains" {
   run bash -c "dig A pihole.mydomain.net +short @127.0.0.1"
   assert_line --index 0 "pi.hole."
@@ -1455,6 +1620,7 @@ setup() {
   assert_line --index 1 "::1"
 }
 
+# bats test_tags=log-contract
 @test "Pi-hole uses dns.reply.host.IPv4/6 for pi.hole" {
   # Set the reply for pi.hole to custom IPv4 and IPv6 addresses
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -1477,6 +1643,7 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=contract
 @test "Pi-hole uses dns.reply.host.IPv4/6 replies inside CNAME chains" {
   run bash -c "dig A pihole.mydomain.net +short @127.0.0.1"
   assert_line --index 0 "pi.hole."
@@ -1487,6 +1654,7 @@ setup() {
   assert_line --index 1 "fe80::10"
 }
 
+# bats test_tags=contract
 @test "Pi-hole uses dns.reply.host.IPv4/6 for hostname" {
   run bash -c "dig A $(hostname) +short @127.0.0.1"
   assert_line --index 0 "10.100.0.10"
@@ -1501,6 +1669,7 @@ setup() {
   assert_line --index 1 ""
 }
 
+# bats test_tags=log-contract
 @test "Pi-hole uses dns.reply.blocking.IPv4/6 for blocked domain" {
   run bash -c 'grep "mode = \"NULL\"" /etc/pihole/pihole.toml'
   assert_line --index 0 '    mode = "NULL"'
@@ -1529,16 +1698,19 @@ setup() {
   assert_line --index 0 "fe80::11"
 }
 
+# bats test_tags=contract
 @test "Antigravity domain is not blocked" {
   run bash -c "dig A antigravity.ftl +short @127.0.0.1"
   assert_line --index 0 "192.168.1.6"
 }
 
+# bats test_tags=contract
 @test "Antigravity ABP-domain is not blocked" {
   run bash -c "dig A x.y.z.abp.antigravity.ftl +short @127.0.0.1"
   assert_line --index 0 "192.168.1.7"
 }
 
+# bats test_tags=contract
 @test "Custom DNS records: Multiple domains per line are accepted" {
   run bash -c "dig A abc-custom.com +short @127.0.0.1"
   assert_line --index 0 "1.1.1.1"
@@ -1546,6 +1718,7 @@ setup() {
   assert_line --index 0 "1.1.1.1"
 }
 
+# bats test_tags=log-contract
 @test "Zone update (non-query) is rejected with NOTIMP (UDP)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -1566,6 +1739,7 @@ setup() {
   assert_line --partial "**** got cache reply: opcode is (null) "
 }
 
+# bats test_tags=log-contract
 @test "Zone update (non-query) is rejected with NOTIMP (TCP)" {
   # Get number of lines in the log before the test
   before="$(grep -c ^ /var/log/pihole/FTL.log)"
@@ -1586,11 +1760,13 @@ setup() {
   assert_line --partial "**** got cache reply: opcode is (null) "
 }
 
+# bats test_tags=contract
 @test "Mixed-case DNS queries are returned in the same case" {
   run bash -c "dig AAAA AaaA.fTL @127.0.0.1"
   assert_line --regexp "AaaA.fTL.[[:space:]]+[[:digit:]]+[[:space:]]+IN[[:space:]]+AAAA[[:space:]]+fe80::1c01"
 }
 
+# bats test_tags=contract
 @test "Custom DNS records: International domains are converted to IDN form" {
   # äste.com ---> xn--ste-pla.com
   run bash -c "dig A xn--ste-pla.com +short @127.0.0.1"
@@ -1600,6 +1776,7 @@ setup() {
   assert_line --index 0 "2.2.2.2"
 }
 
+# bats test_tags=contract
 @test "Local CNAME records: International domains are converted to IDN form" {
   # brücke.com ---> xn--brcke-lva.com
   run bash -c "dig A xn--brcke-lva.com +short @127.0.0.1"
@@ -1608,6 +1785,7 @@ setup() {
   assert_line --index 1 "2.2.2.2"
 }
 
+# bats test_tags=contract
 @test "IDN2 CLI interface correctly encodes/decodes domain according to IDNA2008 + TR46" {
   run bash -c './pihole-FTL idn2 äste.com'
   assert_line --index 0 "xn--ste-pla.com"
@@ -1619,42 +1797,49 @@ setup() {
   assert_line --index 0 "ß.de"
 }
 
+# bats test_tags=contract
 @test "Environmental variable is favored over config file" {
   # The config file has -10 but we set FTLCONF_misc_nice="-11"
   run bash -c 'grep "nice = -11" /etc/pihole/pihole.toml'
   assert_line --index 0 "  nice = -11 ### CHANGED (env), default = -10"
 }
 
+# bats test_tags=contract
 @test "Capitalized Environmental variable is used and favored over config file" {
   # The config file has 90 but we set FTLCONF_MISC_CHECK_SHMEM="91"
   run bash -c 'grep "shmem = 91" /etc/pihole/pihole.toml'
   assert_line --index 0 "    shmem = 91 ### CHANGED (env), default = 90"
 }
 
+# bats test_tags=log-contract
 @test "Correct number of environmental variables is logged" {
   grep "FTLCONF environment variables" /var/log/pihole/FTL.log
   run bash -c 'grep -q "5 FTLCONF environment variables found (2 used, 2 invalid, 1 ignored)" /var/log/pihole/FTL.log'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Correct environmental variable is logged" {
   grep "FTLCONF_misc_nice" /var/log/pihole/FTL.log
   run bash -c 'grep -q "FTLCONF_misc_nice is used" /var/log/pihole/FTL.log'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Invalid environmental variable is logged (type mismatch)" {
   grep "FTLCONF_debug_api" /var/log/pihole/FTL.log
   run bash -c 'grep -q "FTLCONF_debug_api is not a boolean, using default instead" /var/log/pihole/FTL.log'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Invalid environmental variable is logged (validation failed)" {
   grep "FTLCONF_files_pcap" /var/log/pihole/FTL.log
   run bash -c 'grep -q "FTLCONF_files_pcap files.pcap: not a valid file path (invalid character 0x01 at position 0), using default instead" /var/log/pihole/FTL.log'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Unknown environmental variable is logged, a useful alternative is suggested" {
   grep "FTLCONF_dns_upstrrr" /var/log/pihole/FTL.log
   run bash -c 'grep -A1 "FTLCONF_dns_upstrrr is unknown" /var/log/pihole/FTL.log'
@@ -1662,6 +1847,7 @@ setup() {
   assert_line --partial --index 1 "WARNING:     - FTLCONF_dns_upstreams"
 }
 
+# bats test_tags=c-impl
 @test "cJSON_GetErrorPtr and cJSON_InitHooks are never used (for thread-safety reasons)" {
   # cJSON_GetErrorPtr() is not thread-safe but can be replaces by cJSON_ParseWithOpts()
   # cJSON_InitHooks() is only thread-safe if used before any other cJSON function in a thread
@@ -1670,6 +1856,7 @@ setup() {
   refute_output
 }
 
+# bats test_tags=contract
 @test "CLI complains about unknown config key and offers a suggestion" {
   run bash -c './pihole-FTL --config dbg.all'
   assert_line --index 0 "Unknown config option dbg.all, did you mean:"
@@ -1687,6 +1874,7 @@ setup() {
   assert_failure 4
 }
 
+# bats test_tags=contract
 @test "Changing a config option set forced by ENVVAR is not possible via the CLI" {
   run bash -c './pihole-FTL --config misc.nice -12'
   assert_line --index 0 "Config option misc.nice is read-only (set via environmental variable)"
@@ -1700,6 +1888,7 @@ setup() {
 # NOTE: API tests (search, history, lists, queries, Lua pages, auth)
 # moved to pytest (test/api/test_api.py, test/api/test_z_auth.py)
 
+# bats test_tags=contract
 @test "Config validation working on the CLI (type-based checking)" {
   run bash -c './pihole-FTL --config dns.port true'
   assert_line --index 0 'Config setting dns.port is invalid, allowed options are: unsigned integer (16 bit)'
@@ -1710,22 +1899,26 @@ setup() {
   assert_failure 2
 }
 
+# bats test_tags=contract
 @test "An empty files.database is rejected" {
   run bash -c './pihole-FTL --config files.database ""'
   assert_output --partial 'files.database: must not be empty'
   assert_failure 3
 }
 
+# bats test_tags=contract
 @test "files.log.dnsmasq accepts \"-\" for logging to stderr" {
   run ./pihole-FTL --config -t files.log.dnsmasq -
   assert_success
 }
 
+# bats test_tags=contract
 @test "files.log.dnsmasq accepts an empty value for no log file" {
   run ./pihole-FTL --config -t files.log.dnsmasq ""
   assert_success
 }
 
+# bats test_tags=contract
 @test "files.log.dnsmasq is quoted in the dnsmasq config" {
   # The test runs dnsmasq's config check on the generated file: unquoted,
   # the '"' would be unbalanced and ' #' would start a comment
@@ -1735,6 +1928,7 @@ setup() {
 
 # NOTE: API config validation tests moved to pytest (test/api/test_api.py)
 
+# bats test_tags=log-contract
 @test "Internationalized domain names are accepted, invalid ones are not" {
   # dnsmasq is built with libidn2 and converts these to punycode itself
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -1771,6 +1965,7 @@ setup() {
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "An invalid entry of a list in pihole.toml is removed, the others are kept" {
   # Break one of the two shipped entries in the file itself
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -1793,6 +1988,7 @@ setup() {
   assert_success
 }
 
+# bats test_tags=contract
 @test "Gravity stores internationalized domains as punycode" {
   # A query carries the punycode form of a name, so this is what has to end up
   # in the database - the UTF-8 spelling of the list could never match
@@ -1811,6 +2007,7 @@ setup() {
   assert_line --index 3 "||xn--ste-sla.com^"
 }
 
+# bats test_tags=contract
 @test "Config validation working on the CLI (validator-based checking)" {
   # URL paths reject what the webserver would see percent-decoded in some checks only
   run bash -c "./pihole-FTL --config webserver.paths.webhome '/ad%20min/'"
@@ -1920,6 +2117,7 @@ setup() {
   assert_failure 3
 }
 
+# bats test_tags=contract
 @test "files.tmp_db cannot name a file Pi-hole keeps" {
   # database.forceDisk empties files.tmp_db on every start
   run bash -c './pihole-FTL --config -t files.tmp_db /etc/pihole/pihole-FTL.db'
@@ -1933,6 +2131,7 @@ setup() {
   assert_failure 3
 }
 
+# bats test_tags=contract
 @test "Config validation: a document root that resolves to the root is rejected" {
   # Lexically /proc/self/root is a directory of its own, but it is a link
   # the kernel plants to /, so it has to be judged by where it leads
@@ -1957,6 +2156,7 @@ setup() {
   assert_line --index 0 '/var/www/html'
 }
 
+# bats test_tags=log-contract
 @test "DNS hosts sanitization: Whitespace is normalized when saving" {
   # Set dns.hosts with various whitespace formatting issues
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -1972,6 +2172,7 @@ setup() {
   assert_line --index 0 '[ 192.168.1.1 host1.local, 10.0.0.1 host2.local host3.local, 127.0.0.1 host4.local host5.local ]'
 }
 
+# bats test_tags=log-contract
 @test "DNS hosts sanitization: Comments are handled correctly" { 
   # Set dns.hosts with entries containing comments
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -1990,6 +2191,7 @@ setup() {
 # NOTE: API config validation, auth, Lua page tests moved to pytest
 # (test/api/test_api.py, test/api/test_z_auth.py)
 
+# bats test_tags=log-contract
 @test "CLI: Setting and removing password leaves no net change" {
   # Set password via CLI
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -2023,6 +2225,7 @@ setup() {
   assert_line --partial --index 0 '"no password set"'
 }
 
+# bats test_tags=contract
 @test "Test TLS/SSL server using self-signed certificate" {
   # -s: silent
   # -I: HEAD request
@@ -2036,6 +2239,7 @@ setup() {
   assert_success
 }
 
+# bats test_tags=c-impl
 @test "X.509 certificate parser returns expected result" {
   # We are getting the certificate from the config
   run bash -c './pihole-FTL --read-x509'
@@ -2061,6 +2265,7 @@ setup() {
   assert_line --index 19 ""
 }
 
+# bats test_tags=c-impl
 @test "X.509 certificate parser returns expected result (with private key)" {
   # We are explicitly specifying the certificate file here
   run bash -c './pihole-FTL --read-x509-key /etc/pihole/test.pem'
@@ -2100,6 +2305,7 @@ setup() {
   [[ "${lines[33]}" == "" ]]
 }
 
+# bats test_tags=contract
 @test "X.509 certificate parser can check if domain is included" {
   run bash -c './pihole-FTL --read-x509-key /etc/pihole/test.pem pi.hole'
   assert_line --index 0 "Reading certificate from /etc/pihole/test.pem ..."
@@ -2113,6 +2319,7 @@ setup() {
   assert_failure
 }
 
+# bats test_tags=c-impl
 @test "X.509 certificate can be generated for a domain longer than 64 characters" {
   # A CN holds at most 64 characters, the full domain goes into the SAN
   domain="$(printf 'a%.0s' {1..63}).$(printf 'b%.0s' {1..63}).example.com"
@@ -2126,6 +2333,7 @@ setup() {
   rm -f /tmp/long-domain.pem /tmp/long-domain.crt /tmp/long-domain_ca.crt
 }
 
+# bats test_tags=c-impl
 @test "Test embedded GZIP compressor" {
   run bash -c './pihole-FTL gzip test/pihole-FTL.db.sql'
   assert_success
@@ -2145,16 +2353,19 @@ setup() {
   assert_success
 }
 
+# bats test_tags=c-impl
 @test "TAR parser regression harness" {
   run ./tar_regression
   assert_success
 }
 
+# bats test_tags=c-impl
 @test "GZIP parser regression harness" {
   run ./gzip_regression
   assert_success
 }
 
+# bats test_tags=c-impl
 @test "PTR stale-response regression harness" {
   run ./ptr_response_regression
   assert_success
@@ -2162,37 +2373,44 @@ setup() {
   assert_output --partial "PTR_RESPONSE_REGRESSION=PASS"
 }
 
+# bats test_tags=c-impl
 @test "TXT stat buffer regression harness" {
   run ./txt_stat_regression
   assert_success
   assert_output --partial "TXT_STAT_SERVERS_REGRESSION=PASS"
 }
 
+# bats test_tags=contract
 @test "SHA256 checksum working" {
   run bash -c './pihole-FTL sha256sum test/test.pem'
   assert_line --index 0 "ce4c01340ef46bf3bc26831f7c53763d57c863528826aa795f1da5e16d6e7b2d  test/test.pem"
 }
 
+# bats test_tags=contract
 @test "Internal IP -> name resolution works (UDP IPv4)" {
   run bash -c "./pihole-FTL ptr 127.0.0.1 | tail -n1"
   assert_line --index 0 "localhost"
 }
 
+# bats test_tags=contract
 @test "Internal IP -> name resolution works (UDP IPv6)" {
   run bash -c "./pihole-FTL ptr ::1 | tail -n1"
   assert_line --index 0 "localhost"
 }
 
+# bats test_tags=contract
 @test "Internal IP -> name resolution works (TCP IPv4)" {
   run bash -c "./pihole-FTL ptr 127.0.0.1 tcp | tail -n1"
   assert_line --index 0 "localhost"
 }
 
+# bats test_tags=contract
 @test "Internal IP -> name resolution works (TCP IPv6)" {
   run bash -c "./pihole-FTL ptr ::1 tcp | tail -n1"
   assert_line --index 0 "localhost"
 }
 
+# bats test_tags=contract
 @test "Create, verify and re-import Teleporter file via CLI" {
   run bash -c './pihole-FTL --teleporter'
   assert_success
@@ -2217,6 +2435,7 @@ setup() {
 
 # NOTE: Config file rotation count test moved to test_final.bats
 
+# bats test_tags=contract
 @test "Suggest expected completions" {
   run bash -c './pihole-FTL --complete pihole-FTL versio'
   assert_line --index 0 "version"
@@ -2231,6 +2450,7 @@ setup() {
 }
 
 
+# bats test_tags=c-impl
 @test "Webserver options are logged as expected" {
   run bash -c 'grep -F "Webserver option 0/15: document_root=/var/www/html" /var/log/pihole/FTL.log'
   assert_success
@@ -2266,6 +2486,7 @@ setup() {
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Gravity: API write waits for a concurrent reader instead of failing" {
   # gravity_updated() reads gravity.db from its own connection once per second
   # and a write meeting such a reader has to wait for it. Hold a read
@@ -2326,6 +2547,7 @@ SQL
 
 # NOTE: FTL termination test moved to run.sh (runs after both BATS and pytest)
 
+# bats test_tags=contract
 @test "NTP client counts the replies of a server advertising a coarse precision" {
   # The server advertises 2^-9 s (about 2 ms), coarser than a loopback round
   # trip. FTL's own NTP server listens on 127.0.0.1 only (test/pihole.toml)

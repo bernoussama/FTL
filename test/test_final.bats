@@ -8,26 +8,42 @@ bats_load_library 'bats-support'
 bats_load_library 'bats-assert'
 load 'bats_helper.bash'
 
+# Every test carries exactly one tag (select with bats --filter-tags <tag>):
+#   contract      behaviour any implementation must keep: DNS answers, API,
+#                 CLI output and exit codes, files, database contents
+#   log-contract  depends on the text of a log line (FTL.log, pihole.log, ...),
+#                 including wait-for on a log line
+#   c-impl        only meaningful for the C build or a C library's output format
+#                 (linking, backtraces, mbedTLS/civetweb dumps, C harnesses)
+# Precedence when several apply: c-impl > log-contract > contract.
+# Tests share one running FTL and depend on the order they run in, so a
+# filtered run does not set up the state of the tests it skips.
+
+# bats test_tags=log-contract
 @test "No WARNING messages in FTL.log (besides known warnings)" {
   run bash -c 'grep "WARNING:" /var/log/pihole/FTL.log | grep -v -E "CAP_NET_ADMIN|CAP_NET_RAW|CAP_SYS_NICE|CAP_IPC_LOCK|CAP_CHOWN|CAP_NET_BIND_SERVICE|CAP_SYS_TIME|FTLCONF_|(negative DS reply without NS record received for ([a-z0-9-]+\.)*(ftl|icloud\.com|apple-dns\.net|in-addr\.arpa|ip6\.arpa),)|(nameserver 127.0.0.1 refused to do a recursive query)|API: Config item is invalid|API: Config item validation failed|API: Not found|API: Config items set via environment variables|API: Rate-limiting login attempts|API: You need to specify both|API: No request body data|API: Invalid request|API: Rate-limiting 2FA token requests|2FA code has already been used|API: Reused 2FA token|(Teleporter import skipped )|(format_dnsmasq_warn_message\(\): Buffer too small to hold plain message)"'
   refute_output
 }
 
+# bats test_tags=log-contract
 @test "No ERROR messages in FTL.log (besides known/intended errors)" {
   run bash -c 'grep "ERROR: " /var/log/pihole/FTL.log | grep -v -E "(index\.html)|(Failed to create shared memory object)|(FTLCONF_debug_api is not a boolean)|(FTLCONF_files_pcap)|(Failed to set|adjust time during NTP sync: Insufficient permissions)|(nlrequest error)|(Failed to read ARP cache)|(Teleporter: dns\.(hostRecord|cnameRecords|hosts|revServers)(\[|:))|(Invalid value: dns\.hosts\[1\]: invalid hostname)|(----> dns\.hosts\[1\] has been removed)"'
   refute_output
 }
 
+# bats test_tags=log-contract
 @test "No CRIT messages in FTL.log (besides error due to starting FTL more than once)" {
   run bash -c 'grep "CRIT:" /var/log/pihole/FTL.log | grep -v "CRIT: pihole-FTL is already running"'
   refute_output
 }
 
+# bats test_tags=log-contract
 @test "No \"DB not available\" messages in FTL.log" {
   run bash -c 'grep -c "database not available" /var/log/pihole/FTL.log'
   assert_line --index 0 "0"
 }
 
+# bats test_tags=log-contract
 @test "Expected number of config file rotations" {
   # BATS:   1x pihole.toml write (dns.reply.host API PATCH)
   # BATS:   2x pihole.toml writes (CLI password set/remove processes)
@@ -81,6 +97,7 @@ load 'bats_helper.bash'
   fi
 }
 
+# bats test_tags=log-contract
 @test "Blocking enabled through the config drops the verdicts recorded while it was off" {
   # PATCH /api/config and pihole.toml (written with --config here) change the
   # blocking status without /api/dns/blocking. Runs after the config file
@@ -106,6 +123,7 @@ load 'bats_helper.bash'
   [[ "${results}" == " api-false:0:192.168.1.3 api-true:0:${blocked} cli-false:0:192.168.1.3 cli-true:0:${blocked}" ]]
 }
 
+# bats test_tags=contract
 @test "Query with ID 0 has been saved to the database" {
   # FTL exports queries from in-memory DB to disk after a configurable
   # delay (default 30s). Poll up to 60s for the export to complete.
@@ -119,6 +137,7 @@ load 'bats_helper.bash'
   assert_line --index 0 "1"
 }
 
+# bats test_tags=log-contract
 @test "Reimporting more alias-clients than the clients array holds" {
   # 600 new alias-clients are added under one lock, more than one allocation
   # step of the clients array on any architecture. Runs late as they change
@@ -137,6 +156,7 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "A client's first group lookup leaves the DNS cache alone, a group change resets it" {
   # Without regex filters, a new client's groups are looked up on its first
   # query rather than when the client is created. The regex entries are
@@ -169,6 +189,7 @@ load 'bats_helper.bash'
   [[ "${resets}" == "1" ]]
 }
 
+# bats test_tags=contract
 @test "Flushing the logs keeps older history and the overTime window" {
   # Runs after the ID 0 check above as the flush deletes the last 24 hours.
   now=$(date +%s)
@@ -187,6 +208,7 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "A new client's MAC address is looked up on its first query" {
   # hwlen starts at -1, which must compare below 1 on every architecture
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -195,6 +217,7 @@ load 'bats_helper.bash'
   assert_output "1"
 }
 
+# bats test_tags=log-contract
 @test "A failed MAC lookup is not repeated right away, and not done for ECS clients" {
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
   for name in mac-1 mac-2; do
@@ -214,6 +237,7 @@ load 'bats_helper.bash'
   assert_output "2"
 }
 
+# bats test_tags=log-contract
 @test "Setting ntp.sync.interval to 0 disables the NTP sync right away" {
   # FTL restarts and does not start the sync at all, instead of a sync that
   # is already running going on without any pause between the rounds
@@ -233,6 +257,7 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=contract
 @test "Gravity action streams NUL bytes, reports a failure and refuses a second run" {
   # Stand-in for pihole -g: output with a NUL byte in it, then fail after a moment
   if [ -e /usr/local/bin/pihole ]; then
@@ -264,6 +289,7 @@ load 'bats_helper.bash'
   assert_output --partial "Gravity failed"
 }
 
+# bats test_tags=log-contract
 @test "The on-disk history database of database.forceDisk is not world-readable and removed on stop" {
   # Enabling it restarts FTL, which then keeps the history in files.tmp_db
   before=$(stat -c%s /var/log/pihole/FTL.log)
@@ -284,6 +310,7 @@ load 'bats_helper.bash'
   assert_failure
 }
 
+# bats test_tags=log-contract
 @test "FTL keeps running when it cannot open its log file" {
   # With a directory in place of FTL.log every open of the file fails and FTL
   # logs to syslog instead. A list reload makes it log, the in-memory log shows
@@ -309,6 +336,7 @@ load 'bats_helper.bash'
   [[ ${alive} == 0 ]]
 }
 
+# bats test_tags=log-contract
 @test "FTL terminates with message" {
   logsize_before=$(stat -c%s /var/log/pihole/FTL.log)
   # Kill pihole-FTL after having completed all tests
@@ -323,12 +351,14 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Shutdown reason logged at INFO level (#2818)" {
   # Verify the shutdown path now logs at INFO level instead of DEBUG-only
   run bash -c 'grep "INFO: Shutting down (exit code" /var/log/pihole/FTL.log'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "SIGTERM source re-logged near final termination message (#2818)" {
   # Verify the SIGTERM sender is re-logged during cleanup so it appears
   # near the "FTL terminated" message even in truncated logs
@@ -343,6 +373,7 @@ load 'bats_helper.bash'
   assert_line --partial --index 2 "FTL terminated after"
 }
 
+# bats test_tags=log-contract
 @test "Queries older than database.maxDBdays are deleted in the first nightly window after the start" {
   # Start FTL at 03:50 local time, after the random cleaning minute (03:10 to
   # 03:49), with 25000 queries older than 91 days in the database. They are
@@ -389,6 +420,7 @@ load 'bats_helper.bash'
   refute_output
 }
 
+# bats test_tags=log-contract
 @test "A gravity database swapped in right after a restart is loaded (#3162)" {
   # Swap like pihole -g: drop the tables of the database FTL has just opened,
   # then move the new one in. It carries the same timestamp here, so only the
@@ -424,6 +456,7 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Pi-hole PTR records are generated once per address, however it is spelled" {
   # Start FTL afresh so no record exists yet, and ask for a non-canonical
   # spelling first: the record must still answer the canonical name. Further
@@ -460,6 +493,7 @@ load 'bats_helper.bash'
   assert_success
 }
 
+# bats test_tags=log-contract
 @test "Raising misc.privacylevel at runtime hides known domains and clients in the database" {
   logsize_restart=$(stat -c%s /var/log/pihole/FTL.log)
   run bash -c 'su pihole -s /bin/sh -c /home/pihole/pihole-FTL'

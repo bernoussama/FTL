@@ -38,13 +38,20 @@ Every module goes through the same loop:
   - `:1089`, `:1102`: whole-output `refute_output` could miss a forbidden address among extra lines. Now a multi-line regex (`refute_line` errors on empty output).
   - `:380` (SVCB): the fixture (`test/pdns/setup.sh:106`) stored `port="80"` as the target name with no SvcParams. Fixture changed to `1 . port=80`.
   - Bare `[[ ]]` checks (`:461`–`:640`): now `assert_line`/`refute_line`.
-- [ ] Keep the four C harnesses (`test/*_regression.c`) runnable. They test timing and allocation, so data files alone can't replace them. Also pull their cases out as shared test vectors.
+- [x] Keep the four C harnesses (`test/*_regression.c`) runnable. They test timing and allocation, so data files alone can't replace them. Also pull their cases out as shared test vectors. Done for tar, gzip and ptr_response (`test/vectors/`, exported with `--export-vectors`, drift checked by a bats test). txt_stat has none, as dnsmasq stays in C.
 - [x] Golden-output recording tool: run the C build on a set of inputs and store normalized outputs, with timestamps, PIDs and the gzip mtime stripped (`test/golden/`).
 - **Done when** the suite passes unchanged, module harnesses run on their own, and golden files exist for the Phase 2 modules.
 
 ## Phase 1: toolchain spike and boundary rules
 
-- Build an empty Rust library for all 7 CI targets inside the CI containers: amd64 gcc static, amd64 clang, 386, arm/v6, arm/v7, arm64, riscv64. The image doesn't include Rust today, and armv6 and riscv64 musl are the risky ones. If either fails, stop and decide what to do before going further.
+- [x] Build an empty Rust library for all 7 CI targets inside the CI containers: amd64 gcc static, amd64 clang, 386, arm/v6, arm/v7, arm64, riscv64. The image doesn't include Rust today, and armv6 and riscv64 musl are the risky ones. If either fails, stop and decide what to do before going further.
+  - Done locally (2026-11-08) with `rust/` behind `-DFTL_RUST=ON` and Alpine's `rust`/`cargo` 1.91.1 installed into `ftl-build:v2.19` with `apk add`. The non-amd64 targets ran under QEMU user emulation (binfmt) with the image's native gcc, not a cross build.
+  - All 7 build, `pihole-FTL rust-version` prints `ftl-rs 0.1.0 (ABI 1)`, `cargo test` passes, and `test/arch_test.sh` passes (static-pie, 0 shared libraries, CPU/FP checks on arm, backtrace and crash handler).
+  - The full suite passes on amd64 with the library linked in (`RUST=1 test/docker-test.sh test`): bats 212/212, pytest 223/223, final 23/23, including the static-linking checks (`:1264`, `:1286`). An earlier run under heavy load (load average ~12 on 4 cores) failed `test_database_query_types_with_range` and `test_08_rate_limiting_enforced`. The first compares two API calls made while FTL may still be writing to the database, so it can fail at random; fix it before relying on the suite for C-vs-Rust comparisons.
+  - Rust needs `-lgcc_s -lc` (`native-static-libs`). FTL already links `-static -static-libgcc`, so no extra link flags were needed.
+  - Binary size: amd64 grows by about 312 KB (29,093,689 → 29,413,593 bytes) for an almost empty library, mostly Rust std. Track this per module.
+  - Under emulation a full build takes 1–1.5 h per target (arm64: 4,869 s), dominated by the SQLite amalgamation. CI should keep native or cross runners for the per-change builds.
+  - For CI, the toolchain still has to go into the `ftl-build` image, ideally at a pinned version.
 - Write down the boundary rules above. Add ABI checks: `static_assert` struct sizes and offsets in C, plus matching Rust tests, for every type that crosses the boundary.
 - Panic policy, `*_free` functions, and the after-fork hook, tested with a fork stress test.
 - CI approach:

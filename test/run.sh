@@ -1,9 +1,41 @@
 #!/bin/bash
 
+# WARNING: This script is meant to run inside a disposable container (see
+# test/docker-test.sh). It kills running pihole-FTL processes, deletes
+# /etc/pihole, /etc/dnsmasq.d and /var/log/pihole, creates a pihole user and
+# sets file capabilities.
+#
+# Environment variables:
+#   FTL_BIN      Binary under test (default: ./pihole-FTL). The tests call
+#                ./pihole-FTL and check argv[0] in some outputs, so a different
+#                binary is copied to ./pihole-FTL before the tests run.
+#   BATS_ARGS    Extra arguments for both bats runs, shell-quoted, e.g.
+#                "--filter-tags contract" or "--filter 'Regex Test'".
+#   SKIP_PYTEST  Set to 1 to skip the pytest API tests.
+#   NO_UPLOAD    Set to 1 to not upload logs to tricorder.pi-hole.net on
+#                failure. LOG_DIR (if set) receives copies of the logs instead.
+
 # Skip tests on targets not supporting them
 if [[ ${TEST} == "false" ]]; then
   echo "Skipping tests (CI_ARCH: ${CI_ARCH})!"
   exit 0
+fi
+
+# Parse extra bats arguments (shell-quoted string -> array)
+bats_args=()
+if [[ -n "${BATS_ARGS}" ]]; then
+  eval "bats_args=(${BATS_ARGS})"
+fi
+
+# Stage the binary under test as ./pihole-FTL
+FTL_BIN="${FTL_BIN:-./pihole-FTL}"
+if [[ ! -x "${FTL_BIN}" ]]; then
+  echo "FTL binary ${FTL_BIN} does not exist or is not executable"
+  exit 1
+fi
+if [[ "$(realpath "${FTL_BIN}")" != "$(realpath -m ./pihole-FTL)" ]]; then
+  echo "Testing ${FTL_BIN} (copied to ./pihole-FTL)"
+  cp -f "${FTL_BIN}" ./pihole-FTL
 fi
 
 # Create pihole user if it does not exist
@@ -134,7 +166,7 @@ fi
 # Run BATS test suite (includes DNS, regex, CLI, config tests;
 # FTL remains running for the pytest API tests afterwards)
 echo "Running BATS test suite..."
-$BATS -p "test/test_suite.bats"
+$BATS -p "${bats_args[@]}" "test/test_suite.bats"
 RET=$?
 
 # Trigger network table update (PARSE_NEIGHBOR_CACHE) so mock-hwaddr
@@ -145,7 +177,9 @@ sleep 2
 
 # Run pytest API tests (FTL is still running — BATS no longer terminates it)
 # Skip on riscv64 — the emulated runner is too slow for the full API suite
-if [[ "${CI_ARCH}" != "linux/riscv64" ]]; then
+if [[ "${SKIP_PYTEST}" == "1" ]]; then
+  echo "Skipping pytest API tests (SKIP_PYTEST=1)"
+elif [[ "${CI_ARCH}" != "linux/riscv64" ]]; then
   echo "Running pytest API tests..."
   python3 -m pytest test/api/ -v
   PYTEST_RET=$?
@@ -161,7 +195,7 @@ fi
 # unexpected log messages from the entire run, then terminates FTL.
 echo ""
 echo "Running final log validation..."
-$BATS -p "test/test_final.bats"
+$BATS -p "${bats_args[@]}" "test/test_final.bats"
 FINAL_RET=$?
 if [[ $FINAL_RET != 0 ]]; then
   RET=$FINAL_RET
@@ -171,7 +205,14 @@ curl_to_tricorder() {
   curl --silent --upload-file "${1}" https://tricorder.pi-hole.net
 }
 
-if [[ $RET != 0 ]]; then
+if [[ -n "${LOG_DIR}" ]]; then
+  mkdir -p "${LOG_DIR}"
+  cp /var/log/pihole/pihole.log /var/log/pihole/FTL.log /var/log/pihole/webserver.log \
+     ./ptr.log /etc/pihole/pihole.toml "${LOG_DIR}/" 2>/dev/null
+  echo "Logs copied to ${LOG_DIR}"
+fi
+
+if [[ $RET != 0 && "${NO_UPLOAD}" != "1" ]]; then
   echo -n "pihole/pihole.log: "
   curl_to_tricorder /var/log/pihole/pihole.log
   echo ""

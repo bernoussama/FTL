@@ -31,6 +31,10 @@
 #                    test/golden/record.sh.
 #   run <cmd...>     Run a command in a prepared container, e.g.
 #                      test/docker-test.sh run ./pihole-FTL -vv
+#   cargo-test [args]
+#                    Run cargo test for rust/ in the Rust build image. The
+#                    checkout is mounted read-only and rust/ is copied to /tmp
+#                    first. Extra arguments go to cargo test.
 #
 # Environment:
 #   FTL_BIN      Host path of a pihole-FTL binary to test instead of building.
@@ -43,14 +47,17 @@
 #   GDB          1 = attach gdb to FTL (see test/run.sh).
 #   BUILD_OPTS   Extra build.sh options, e.g. "clang" (also sets STATIC=false).
 #   RUST         1 = link the Rust library (rust/) into pihole-FTL
-#                (-DFTL_RUST=ON). Installs Alpine's rust/cargo in the build
-#                container, as the image does not ship them yet.
-#   IMAGE        Build image (default: ghcr.io/pi-hole/ftl-build:v2.19).
+#                (-DFTL_RUST=ON). Uses the Rust build image (see IMAGE).
+#   IMAGE        Build image. Default: ghcr.io/pi-hole/ftl-build:v2.19, or with
+#                RUST=1 (and for cargo-test) ftl-build-rust:v2.19, with a
+#                -<platform> suffix when PLATFORM is set. The local Rust image
+#                is built from test/docker/Dockerfile.rust the first time it is
+#                needed. To rebuild it, remove it with docker rmi. An IMAGE you
+#                set yourself is used as it is and never built here.
 #   PLATFORM     Docker platform (default: native), e.g. linux/arm64.
 
 set -euo pipefail
 
-IMAGE="${IMAGE:-ghcr.io/pi-hole/ftl-build:v2.19}"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="$(realpath -m "${OUT_DIR:-${REPO}/build-docker}")"
 LOG_DIR="$(realpath -m "${LOG_DIR:-${OUT_DIR}/logs}")"
@@ -63,10 +70,8 @@ if [[ "${BUILD_OPTS}" == *clang* ]]; then
 fi
 RUST="${RUST:-}"
 CMAKE_EXTRA=""
-RUST_SETUP=":"
 if [[ "${RUST}" == "1" ]]; then
   CMAKE_EXTRA="-DFTL_RUST=ON"
-  RUST_SETUP="apk add --no-cache rust cargo > /dev/null"
   CACHE_VOLUME="${CACHE_VOLUME}-rust"
 fi
 PLATFORM="${PLATFORM:-}"
@@ -84,6 +89,19 @@ fi
 cmd="${1:-}"
 [[ $# -gt 0 ]] && shift
 
+# Build image: the upstream one, or the local Rust image for RUST=1 and
+# cargo-test. An IMAGE set in the environment is used as it is.
+BUILD_RUST_IMAGE=false
+if [[ -z "${IMAGE:-}" ]]; then
+  if [[ "${RUST}" == "1" || "${cmd}" == "cargo-test" ]]; then
+    IMAGE="ftl-build-rust:v2.19"
+    [[ -n "${PLATFORM}" ]] && IMAGE+="-${PLATFORM//\//-}"
+    BUILD_RUST_IMAGE=true
+  else
+    IMAGE="ghcr.io/pi-hole/ftl-build:v2.19"
+  fi
+fi
+
 docker_args=(--rm -i -e "TERM=xterm" -e "CI_ARCH=${CI_ARCH}" -e "STATIC=${STATIC}"
              -e "BUILD_OPTS=${BUILD_OPTS}" -v "${REPO}:/src:ro")
 [[ -t 0 && -t 1 ]] && docker_args+=(-t)
@@ -92,21 +110,36 @@ docker_args=(--rm -i -e "TERM=xterm" -e "CI_ARCH=${CI_ARCH}" -e "STATIC=${STATIC
 # Copy the checkout into /app without build directories or local artifacts.
 # GNU tar keeps mtimes, so incremental builds in the cache volume still work.
 # Files end up owned by root, which keeps git from complaining about ownership.
-copy_source='tar -C /src --exclude=./cmake --exclude=./cmake_ci --exclude=./build-docker \
+copy_source='tar -C /src --exclude=./cmake --exclude=./cmake_ci --exclude=./build-docker --exclude=./build-ci \
   --exclude=./test/libs --exclude=./rust/target --exclude=./node_modules --exclude="./pihole-FTL*" -cf - . \
   | tar -C /app --no-same-owner -xf -'
 
 REGRESSION_HARNESSES="tar_regression gzip_regression ptr_response_regression txt_stat_regression"
 REGRESSION_FLAGS="-DBUILD_TAR_REGRESSION=ON -DBUILD_GZIP_REGRESSION=ON -DBUILD_PTR_RESPONSE_REGRESSION=ON -DBUILD_TXT_STAT_REGRESSION=ON"
 
+# Build the local Rust image if it does not exist yet (see IMAGE above)
+ensure_rust_image() {
+  [[ "${BUILD_RUST_IMAGE}" == "true" ]] || return 0
+  if docker image inspect "${IMAGE}" > /dev/null 2>&1; then
+    return 0
+  fi
+  local -a platform_args=()
+  if [[ -n "${PLATFORM}" ]]; then
+    platform_args=(--platform "${PLATFORM}")
+  fi
+  echo "Building ${IMAGE} from test/docker/Dockerfile.rust"
+  docker build "${platform_args[@]}" -t "${IMAGE}" \
+    -f "${REPO}/test/docker/Dockerfile.rust" "${REPO}/test/docker"
+}
+
 do_build() {
+  ensure_rust_image
   mkdir -p "${OUT_DIR}"
   echo "Building FTL in ${IMAGE} (cache volume: ${CACHE_VOLUME}, output: ${OUT_DIR})"
   # shellcheck disable=SC2016
   docker run "${docker_args[@]}" -v "${CACHE_VOLUME}:/app/cmake" -v "${OUT_DIR}:/out" \
     -e "HOST_UID=$(id -u)" -e "HOST_GID=$(id -g)" "${IMAGE}" bash -c "
       set -e
-      ${RUST_SETUP}
       mkdir -p /app && ${copy_source}
       cd /app
       # Not \"build.sh test\": that would also run the test suite
@@ -137,6 +170,7 @@ run_prepared() {
     echo "No binary at ${bin}; run '$0 build' or set FTL_BIN" >&2
     exit 1
   fi
+  ensure_rust_image
   mkdir -p "${LOG_DIR}"
   docker run "${docker_args[@]}" "${extra_mounts[@]}" -v "$(dirname "${bin}"):/ftl-bin:ro" -v "${LOG_DIR}:/logs" \
     -e "FTL_BIN=/ftl-bin/$(basename "${bin}")" -e "SKIP_PYTEST=${SKIP_PYTEST:-}" -e "GDB=${GDB:-}" -e "BATS_ARGS=${BATS_ARGS:-}" \
@@ -152,6 +186,19 @@ run_prepared() {
       done
       ${script}
     "
+}
+
+# cargo test for rust/ in the Rust image. rust/ is copied to /tmp (without
+# target/) so that cargo never writes into the mounted checkout.
+cargo_test() {
+  ensure_rust_image
+  docker run "${docker_args[@]}" "${IMAGE}" bash -c '
+    set -e
+    mkdir -p /tmp/ftl-rs
+    tar -C /src/rust --exclude=./target -cf - . | tar -C /tmp/ftl-rs -xf -
+    cd /tmp/ftl-rs
+    cargo test --locked --offline "$@"
+  ' bash "$@" < /dev/null
 }
 
 extra_mounts=()
@@ -191,6 +238,9 @@ case "${cmd}" in
   run)
     printf -v user_cmd '%q ' "$@"
     run_prepared "${user_cmd}"
+    ;;
+  cargo-test)
+    cargo_test "$@"
     ;;
   *)
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# \{0,1\}//'

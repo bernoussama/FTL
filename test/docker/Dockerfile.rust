@@ -1,0 +1,26 @@
+# Pi-hole: A black hole for Internet advertisements
+# (c) 2026 Pi-hole, LLC (https://pi-hole.net)
+# Network-wide ad blocking via your own hardware.
+#
+# FTL Engine
+# Build image with the Rust toolchain, for RUST=1 in test/docker-test.sh
+#
+# This file is copyright under the latest version of the EUPL.
+# Please see LICENSE file for your rights under this license.
+#
+# The upstream ftl-build image has no Rust toolchain yet. Alpine's rust and cargo
+# are pinned to the 1.91 series, so every build and every platform uses the same
+# compiler. "~1.91" is apk's fuzzy match: any 1.91.x release satisfies it, so a
+# rebuild after Alpine ships a newer 1.91 patch picks that up. The exact versions
+# are printed below and in the build log.
+#
+# Built on first use by test/docker-test.sh, or by hand:
+#   docker build --platform linux/amd64 -t ftl-build-rust:v2.19 \
+#     -f test/docker/Dockerfile.rust test/docker
+
+ARG BASE=ghcr.io/pi-hole/ftl-build:v2.19
+FROM ${BASE}
+
+RUN apk add --no-cache 'rust~1.91' 'cargo~1.91'
+
+RUN rustc --version && cargo --version

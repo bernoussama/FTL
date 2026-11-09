@@ -11,6 +11,10 @@
 #define ARGS_H
 
 void parse_args(int argc, char *argv[]);
+// pihole-FTL --complete: prints the completions and exits. suggest_complete_c()
+// is the C implementation, which rust-compare complete compares with the Rust one
+void suggest_complete(const int argc, char *argv[]);
+void suggest_complete_c(const int argc, char *argv[]);
 
 extern bool daemonmode, cli_mode;
 extern int argc_dnsmasq;

@@ -98,9 +98,6 @@ bool daemonmode = true, cli_mode = false;
 int argc_dnsmasq = 0;
 const char** argv_dnsmasq = NULL;
 
-// Prototypes
-static void suggest_complete(const int argc, char *argv[]);
-
 static bool __attribute__ ((pure)) is_term(void)
 {
 	// test whether STDOUT refers to a terminal or if env variable
@@ -222,6 +219,26 @@ static bool strStartsWithIgnoreCase(const char *input, const char *start)
 {
 	return strncasecmp(input, start, strlen(start)) == 0;
 }
+
+#ifdef HAVE_FTL_RS
+// Compares the layout of a Rust struct with the C one, field by field, and
+// prints each field that differs (rust-version)
+static bool layout_matches(const char *name, const size_t *rust, const size_t *c,
+                           const char *const *field, const unsigned int n)
+{
+	bool ok = true;
+	for(unsigned int i = 0; i < n; i++)
+	{
+		if(rust[i] == c[i])
+			continue;
+		printf("%s %s differs: Rust %zu, FTL %zu\n", name, field[i], rust[i], c[i]);
+		ok = false;
+	}
+	if(ok)
+		printf("%s layout: OK\n", name);
+	return ok;
+}
+#endif
 
 void parse_args(int argc, char *argv[])
 {
@@ -631,6 +648,39 @@ void parse_args(int argc, char *argv[])
 	{
 		// Enable stdout printing
 		cli_mode = true;
+#ifdef HAVE_FTL_RS
+		// Rust (rust/src/idn.rs): the arguments and the output are UTF-8
+		ftl_rs_buf result = { NULL, 0, 0 };
+		if(argc == 3)
+		{
+			// Convert unicode domain to punycode
+			if(ftl_rs_idn2_to_ascii(argv[2], &result) != IDN2_OK)
+			{
+				// Invalid domain name
+				printf("Invalid domain name: %s\n", argv[2]);
+				exit(EXIT_FAILURE);
+			}
+		}
+		else if(argc == 4 && (strcmp(argv[2], "-d") == 0 || strcmp(argv[2], "--decode") == 0))
+		{
+			// Convert punycode domain to unicode
+			if(ftl_rs_idn2_to_unicode(argv[3], &result) != IDN2_OK)
+			{
+				// Invalid domain name
+				printf("Invalid domain name: %s\n", argv[3]);
+				exit(EXIT_FAILURE);
+			}
+		}
+		else
+		{
+			printf("Usage: %s idn2 [--decode] <domain>\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+
+		printf("%s\n", (const char *)result.ptr);
+		ftl_rs_buf_free(&result);
+		exit(EXIT_SUCCESS);
+#else
 		if(argc == 3)
 		{
 			// Convert unicode domain to punycode
@@ -671,6 +721,7 @@ void parse_args(int argc, char *argv[])
 			printf("Usage: %s idn2 [--decode] <domain>\n", argv[0]);
 			exit(EXIT_FAILURE);
 		}
+#endif
 	}
 
 	// sha256sum mode
@@ -712,16 +763,17 @@ void parse_args(int argc, char *argv[])
 		const size_t c[4] = { sizeof(ftl_rs_buf), offsetof(ftl_rs_buf, ptr),
 		                      offsetof(ftl_rs_buf, len), offsetof(ftl_rs_buf, cap) };
 		const char *field[4] = { "size", "ptr", "len", "cap" };
-		for(unsigned int i = 0; i < 4; i++)
-		{
-			if(rust[i] == c[i])
-				continue;
-			printf("ftl_rs_buf %s differs: Rust %zu, FTL %zu\n", field[i], rust[i], c[i]);
-			ok = false;
-		}
-		if(ok)
-			printf("ftl_rs_buf layout: OK\n");
-		exit(ok ? EXIT_SUCCESS : EXIT_FAILURE);
+		const bool buf_ok = layout_matches("ftl_rs_buf", rust, c, field, 4);
+
+		// Size of ftl_rs_conf_entry, then the offsets of its five fields
+		size_t rust_entry[6] = { 0 };
+		ftl_rs_conf_entry_layout(rust_entry);
+		const size_t c_entry[6] = { sizeof(ftl_rs_conf_entry), offsetof(ftl_rs_conf_entry, key),
+		                            offsetof(ftl_rs_conf_entry, kind), offsetof(ftl_rs_conf_entry, default_value),
+		                            offsetof(ftl_rs_conf_entry, choices), offsetof(ftl_rs_conf_entry, n_choices) };
+		const char *entry_field[6] = { "size", "key", "kind", "default_value", "choices", "n_choices" };
+		const bool entry_ok = layout_matches("ftl_rs_conf_entry", rust_entry, c_entry, entry_field, 6);
+		exit(ok && buf_ok && entry_ok ? EXIT_SUCCESS : EXIT_FAILURE);
 #else
 		printf("FTL was built without the Rust library\n");
 		exit(EXIT_FAILURE);
@@ -1555,6 +1607,166 @@ static void list_matches(const char *last_word, const char *const *list, size_t 
 			puts(list[i]);
 }
 
+#ifdef HAVE_FTL_RS
+// The config items for ftl_rs_complete(), in config order (src/ftl_rs.h). The
+// strings in values are freed by snapshot_free() after the call. Each enum item
+// is in the config once, so the names of all of them fit in choices.
+#define COMPLETE_CHOICES (PTR_MAX + BUSY_MAX + MODE_MAX + REFRESH_MAX + LISTEN_MAX + \
+                          THEME_MAX + EDNS_MODE_MAX + TEMP_UNIT_MAX)
+struct complete_snapshot {
+	ftl_rs_conf_entry entries[CONFIG_ELEMENTS];
+	size_t n_entries;
+	char *values[CONFIG_ELEMENTS];
+	size_t n_values;
+	const char *choices[COMPLETE_CHOICES];
+	size_t n_choices;
+};
+
+// The number of names of an enum config item, 0 for any other type
+static size_t enum_count(const enum conf_type type)
+{
+	if(type == CONF_ENUM_PTR_TYPE) return PTR_MAX;
+	if(type == CONF_ENUM_BUSY_TYPE) return BUSY_MAX;
+	if(type == CONF_ENUM_BLOCKING_MODE) return MODE_MAX;
+	if(type == CONF_ENUM_REFRESH_HOSTNAMES) return REFRESH_MAX;
+	if(type == CONF_ENUM_LISTENING_MODE) return LISTEN_MAX;
+	if(type == CONF_ENUM_WEB_THEME) return THEME_MAX;
+	if(type == CONF_ENUM_BLOCKING_EDNS_MODE) return EDNS_MODE_MAX;
+	if(type == CONF_ENUM_TEMP_UNIT) return TEMP_UNIT_MAX;
+	return 0;
+}
+
+// The name j of an enum config item
+static const char *enum_name(const enum conf_type type, const size_t j)
+{
+	if(type == CONF_ENUM_PTR_TYPE) return get_ptr_type_str(j);
+	if(type == CONF_ENUM_BUSY_TYPE) return get_busy_reply_str(j);
+	if(type == CONF_ENUM_BLOCKING_MODE) return get_blocking_mode_str(j);
+	if(type == CONF_ENUM_REFRESH_HOSTNAMES) return get_refresh_hostnames_str(j);
+	if(type == CONF_ENUM_LISTENING_MODE) return get_listeningMode_str(j);
+	if(type == CONF_ENUM_WEB_THEME) return get_web_theme_str(j);
+	if(type == CONF_ENUM_BLOCKING_EDNS_MODE) return get_edns_mode_str(j);
+	if(type == CONF_ENUM_TEMP_UNIT) return get_temp_unit_str(j);
+	return NULL;
+}
+
+// Keeps value until snapshot_free(), and returns it
+static const char *snapshot_keep(struct complete_snapshot *snap, char *value)
+{
+	if(value != NULL)
+		snap->values[snap->n_values++] = value;
+	return value;
+}
+
+// Points entry at the names of an enum item, which are added to the choices
+static void snapshot_choices(struct complete_snapshot *snap, ftl_rs_conf_entry *entry, const enum conf_type type)
+{
+	const size_t n = enum_count(type);
+	entry->kind = FTL_RS_CONF_CHOICES;
+	entry->choices = snap->choices + snap->n_choices;
+	entry->n_choices = n;
+	for(size_t j = 0; j < n; j++)
+		snap->choices[snap->n_choices++] = enum_name(type, j);
+}
+
+// Adds a config item to the snapshot, with the suggestions of suggest_complete_c()
+static void snapshot_add(struct complete_snapshot *snap, struct conf_item *item)
+{
+	ftl_rs_conf_entry *entry = &snap->entries[snap->n_entries++];
+	*entry = (ftl_rs_conf_entry){ .key = item->k, .kind = FTL_RS_CONF_NONE };
+
+	switch(item->t)
+	{
+		case CONF_BOOL:
+		case CONF_ALL_DEBUG_BOOL:
+			entry->kind = FTL_RS_CONF_BOOL;
+			break;
+
+		case CONF_INT:
+		case CONF_UINT:
+		case CONF_UINT16:
+		case CONF_LONG:
+		case CONF_DOUBLE:
+		case CONF_STRING:
+		case CONF_STRING_ALLOCATED:
+		case CONF_JSON_STRING_ARRAY:
+		{
+			// The default as JSON, printed the way the API prints it
+			cJSON *val = addJSONConfValue(item->t, &item->d);
+			char *json = val != NULL ? cJSON_PrintUnformatted(val) : NULL;
+			cJSON_Delete(val);
+			entry->kind = item->t == CONF_JSON_STRING_ARRAY ? FTL_RS_CONF_JSON_ARRAY : FTL_RS_CONF_VALUE;
+			entry->default_value = snapshot_keep(snap, json);
+			break;
+		}
+
+		case CONF_ENUM_PTR_TYPE:
+		case CONF_ENUM_BUSY_TYPE:
+		case CONF_ENUM_BLOCKING_MODE:
+		case CONF_ENUM_REFRESH_HOSTNAMES:
+		case CONF_ENUM_LISTENING_MODE:
+		case CONF_ENUM_WEB_THEME:
+		case CONF_ENUM_BLOCKING_EDNS_MODE:
+		case CONF_ENUM_TEMP_UNIT:
+			snapshot_choices(snap, entry, item->t);
+			break;
+
+		case CONF_ENUM_PRIVACY_LEVEL:
+		{
+			// A number, printed whatever the word is
+			char privacy[16] = { 0 };
+			snprintf(privacy, sizeof(privacy), "%d", (int)item->d.privacy_level);
+			entry->kind = FTL_RS_CONF_ALWAYS;
+			entry->default_value = snapshot_keep(snap, strdup(privacy));
+			break;
+		}
+
+		case CONF_STRUCT_IN_ADDR:
+		{
+			char ip[INET_ADDRSTRLEN] = { 0 };
+			inet_ntop(AF_INET, &item->d.in_addr.s_addr, ip, sizeof(ip));
+			entry->kind = FTL_RS_CONF_ALWAYS;
+			entry->default_value = snapshot_keep(snap, strdup(ip));
+			break;
+		}
+
+		case CONF_STRUCT_IN6_ADDR:
+		{
+			char ip[INET6_ADDRSTRLEN] = { 0 };
+			inet_ntop(AF_INET6, &item->d.in6_addr, ip, sizeof(ip));
+			entry->kind = FTL_RS_CONF_ALWAYS;
+			entry->default_value = snapshot_keep(snap, strdup(ip));
+			break;
+		}
+
+		case CONF_PASSWORD:
+			// Nothing to suggest
+			break;
+	}
+}
+
+// Fills the snapshot with every config item, in config order
+static void snapshot_build(struct complete_snapshot *snap)
+{
+	snap->n_entries = 0;
+	snap->n_values = 0;
+	snap->n_choices = 0;
+	for(unsigned int i = 0; i < CONFIG_ELEMENTS; i++)
+	{
+		struct conf_item *item = get_conf_item(&config, i);
+		if(item != NULL)
+			snapshot_add(snap, item);
+	}
+}
+
+// Frees the strings that snapshot_build() kept
+static void snapshot_free(struct complete_snapshot *snap)
+{
+	for(size_t i = 0; i < snap->n_values; i++)
+		free(snap->values[i]);
+}
+#endif
+
 /**
  * @brief Provides auto-complete suggestions for the CLI based on the current command-line arguments.
  *
@@ -1562,10 +1774,45 @@ static void list_matches(const char *last_word, const char *const *list, size_t 
  * aiding in command-line auto-completion for the `pihole-FTL` utility and its subcommands.
  * It supports suggestions for root-level commands, subcommands, and configuration keys/values.
  *
+ * With HAVE_FTL_RS the lines come from the Rust library (rust/src/complete.rs).
+ * C only reads the config for --config.
+ *
  * @param argc The number of command-line arguments.
  * @param argv The array of command-line argument strings.
  */
 void suggest_complete(const int argc, char *argv[])
+{
+#ifdef HAVE_FTL_RS
+	// Enable stdout printing
+	cli_mode = true;
+	log_ctrl(false, true);
+
+	const bool is_config = argc > 4 && strEndsWith(argv[3], "--config");
+	ftl_rs_buf out = { 0 };
+	if(is_config)
+	{
+		getLogFilePath(false);
+		initConfig(&config);
+		struct complete_snapshot snap;
+		snapshot_build(&snap);
+		out = ftl_rs_complete(argc, (const char *const *)argv, snap.entries, snap.n_entries);
+		snapshot_free(&snap);
+	}
+	else
+		out = ftl_rs_complete(argc, (const char *const *)argv, NULL, 0);
+
+	if(out.len > 0)
+		fwrite(out.ptr, 1, out.len, stdout);
+	ftl_rs_buf_free(&out);
+	exit(EXIT_SUCCESS);
+#else
+	suggest_complete_c(argc, argv);
+#endif
+}
+
+// The C implementation of --complete: prints the lines and exits. It is also the
+// reference for `pihole-FTL rust-compare complete` (src/ftl_rs_compare_complete.c).
+void suggest_complete_c(const int argc, char *argv[])
 {
 	// Auto-complete suggestions for the CLI
 	// Enable stdout printing

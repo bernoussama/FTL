@@ -17,6 +17,8 @@
 #include "config/password.h"
 // log_verify_message()
 #include "database/message-table.h"
+// ftl_rs_sha256_file()
+#include "ftl_rs.h"
 
 // opendir(), readdir()
 #include <dirent.h>
@@ -808,8 +810,10 @@ bool files_different(const char *pathA, const char *pathB, unsigned int from)
 	return different;
 }
 
-// Create SHA256 checksum of a file
-bool sha256sum(const char *path, uint8_t checksum[SHA256_DIGEST_SIZE], const bool skip_end)
+// SHA256 checksum of a file with nettle. sha256sum() uses it without
+// HAVE_FTL_RS, and rust-compare sha256 uses it as the reference for the Rust version
+bool sha256sum_c(const char *path, uint8_t checksum[SHA256_DIGEST_SIZE], const bool skip_end);
+bool sha256sum_c(const char *path, uint8_t checksum[SHA256_DIGEST_SIZE], const bool skip_end)
 {
 	// Open file
 	FILE *fp = fopen(path, "rb");
@@ -862,6 +866,22 @@ bool sha256sum(const char *path, uint8_t checksum[SHA256_DIGEST_SIZE], const boo
 	free(buf);
 
 	return true;
+}
+
+// Create SHA256 checksum of a file
+bool sha256sum(const char *path, uint8_t checksum[SHA256_DIGEST_SIZE], const bool skip_end)
+{
+#ifdef HAVE_FTL_RS
+	// The result is the errno of a failed open (positive) or read (negative)
+	const int err = ftl_rs_sha256_file(path, skip_end, checksum);
+	if(err > 0)
+		log_warn("sha256_file(): Failed to open \"%s\" for reading: %s", path, strerror(err));
+	else if(err < 0)
+		log_warn("sha256_file(): Failed to read \"%s\": %s", path, strerror(-err));
+	return err == 0;
+#else
+	return sha256sum_c(path, checksum, skip_end);
+#endif
 }
 
 /**

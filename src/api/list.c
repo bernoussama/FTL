@@ -22,6 +22,7 @@
 // parse_groupIDs()
 #include "webserver/http-common.h"
 #include <idn2.h>
+#include "ftl_rs.h"
 
 static int api_list_read(struct ftl_conn *api,
                          const int code,
@@ -76,10 +77,19 @@ static int api_list_read(struct ftl_conn *api,
 		}
 		else // domainlists
 		{
+#ifdef HAVE_FTL_RS
+			// Rust (rust/src/idn.rs). The result is copied to malloc() memory, so
+			// that it is freed below like the libidn2 one
+			ftl_rs_buf unicode_buf = { NULL, 0, 0 };
+			const int rc = ftl_rs_idn2_to_unicode(table.domain, &unicode_buf);
+			char *unicode = rc == IDN2_OK ? strdup((const char *)unicode_buf.ptr) : NULL;
+			ftl_rs_buf_free(&unicode_buf);
+#else
 			char *unicode = NULL;
 			const int rc = idn2_to_unicode_lzlz(table.domain, &unicode, IDN2_NONTRANSITIONAL);
+#endif
 			JSON_COPY_STR_TO_OBJECT(row, "domain", table.domain);
-			if(rc == IDN2_OK)
+			if(rc == IDN2_OK && unicode != NULL)
 				JSON_COPY_STR_TO_OBJECT(row, "unicode", unicode);
 			else
 				JSON_COPY_STR_TO_OBJECT(row, "unicode", table.domain);
@@ -495,8 +505,21 @@ static int api_list_write(struct ftl_conn *api,
 
 				if(needs_idn)
 				{
+#ifdef HAVE_FTL_RS
+					// Rust (rust/src/idn.rs). The result is copied to malloc() memory, so
+					// that it is freed like the libidn2 one
+					ftl_rs_buf punycode_buf = { NULL, 0, 0 };
+					int rc = ftl_rs_idn2_to_ascii(it->valuestring, &punycode_buf);
+					char *punycode = rc == IDN2_OK ? strdup((const char *)punycode_buf.ptr) : NULL;
+					ftl_rs_buf_free(&punycode_buf);
+					if(rc == IDN2_OK && punycode == NULL)
+						rc = IDN2_MALLOC;
+					const char *message = ftl_rs_idn2_strerror(rc);
+#else
 					char *punycode = NULL;
 					const int rc = idn2_to_ascii_lz(it->valuestring, &punycode, IDN2_NFC_INPUT | IDN2_NONTRANSITIONAL);
+					const char *message = idn2_strerror(rc);
+#endif
 					if (rc != IDN2_OK)
 					{
 						// Invalid domain name
@@ -505,7 +528,7 @@ static int api_list_write(struct ftl_conn *api,
 						return send_json_error(api, 400,
 						                       "bad_request",
 						                       "Invalid request: Invalid domain name",
-						                       idn2_strerror(rc));
+						                       message);
 					}
 
 					// Replace domain with punycode version

@@ -13,6 +13,7 @@
 #include "database/sqlite3.h"
 // idn2_to_ascii_8z()
 #include <idn2.h>
+#include "ftl_rs.h"
 // strncasecmp()
 #include <strings.h>
 
@@ -72,19 +73,33 @@ static bool valid_idn(const char *domain, const size_t len, const bool fqdn_only
 	memcpy(buf, domain, len);
 	buf[len] = '\0';
 
+#ifdef HAVE_FTL_RS
+	// Rust (rust/src/idn.rs). The result is copied to malloc() memory, so that
+	// it is freed like the libidn2 one
+	ftl_rs_buf ascii_buf = { NULL, 0, 0 };
+	char *ascii = ftl_rs_idn2_to_ascii(buf, &ascii_buf) == IDN2_OK ? strdup((const char *)ascii_buf.ptr) : NULL;
+	ftl_rs_buf_free(&ascii_buf);
+	if(ascii == NULL)
+		return false;
+#else
 	char *ascii = NULL;
 	if(idn2_to_ascii_8z(buf, &ascii, IDN2_NONTRANSITIONAL) != IDN2_OK)
 	{
 		idn2_free(ascii);
 		return false;
 	}
+#endif
 
 	// Hand out a copy of our own so that the caller frees this and the ABP
 	// pattern built below the same way
 	const bool valid = valid_domain(ascii, strlen(ascii), fqdn_only);
 	if(valid && punycode != NULL)
 		*punycode = strdup(ascii);
+#ifdef HAVE_FTL_RS
+	free(ascii);
+#else
 	idn2_free(ascii);
+#endif
 
 	return valid && (punycode == NULL || *punycode != NULL);
 }

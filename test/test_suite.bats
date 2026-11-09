@@ -2388,12 +2388,62 @@ skip_without_rust() {
 }
 
 # Phase 2 (sha256): C vs Rust comparison tests
+
+# bats test_tags=c-impl
+@test "Rust library: rust-compare sha256 finds no difference between C and Rust SHA-256" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare sha256 ./pihole-FTL test/test.pem
+  assert_success
+  assert_line --regexp '^rust-compare sha256: [0-9]+ inputs, 0 differences$'
+}
+
+# bats test_tags=c-impl
+@test "Rust library: pihole-FTL verify passes with the Rust SHA-256 (skip_end)" {
+  skip_without_rust
+  run ./pihole-FTL verify
+  assert_success
+  assert_output --partial "Binary integrity check: OK"
+}
+
 # -- end sha256
 
 # Phase 2 (idn2): C vs Rust comparison tests
+
+# bats test_tags=c-impl
+@test "Rust library: rust-compare idn2 finds no difference between C and Rust IDNA" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare idn2
+  assert_success
+  assert_line --regexp '^rust-compare idn2: [0-9]+ inputs, 0 differences$'
+}
+
+# bats test_tags=c-impl
+@test "Rust library: idn2 converts a Unicode domain to punycode" {
+  skip_without_rust
+  run ./pihole-FTL idn2 bücher.de
+  assert_success
+  assert_output "xn--bcher-kva.de"
+}
+
+# bats test_tags=c-impl
+@test "Rust library: idn2 --decode converts punycode back to Unicode" {
+  skip_without_rust
+  run ./pihole-FTL idn2 --decode xn--zca.de
+  assert_success
+  assert_output "ß.de"
+}
+
 # -- end idn2
 
 # Phase 2 (complete): C vs Rust comparison tests
+
+# bats test_tags=c-impl
+@test "Rust library: --complete gives the same output as the C implementation on the compare input set" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare complete
+  assert_success
+  assert_line --regexp '^rust-compare complete: [1-9][0-9]* inputs, 0 differences$'
+}
 # -- end complete
 
 # bats test_tags=contract

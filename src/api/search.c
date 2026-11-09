@@ -20,6 +20,7 @@
 // parse_groupIDs()
 #include "webserver/http-common.h"
 #include <idn2.h>
+#include "ftl_rs.h"
 
 #define MAX_SEARCH_RESULTS 10000u
 
@@ -211,14 +212,27 @@ int api_search(struct ftl_conn *api)
 	}
 	if(needs_idn)
 	{
+#ifdef HAVE_FTL_RS
+		// Rust (rust/src/idn.rs). The result is copied to malloc() memory, so
+		// that it is freed like the libidn2 one
+		ftl_rs_buf punycode_buf = { NULL, 0, 0 };
+		int rc = ftl_rs_idn2_to_ascii(domain, &punycode_buf);
+		punycode = rc == IDN2_OK ? strdup((const char *)punycode_buf.ptr) : NULL;
+		ftl_rs_buf_free(&punycode_buf);
+		if(rc == IDN2_OK && punycode == NULL)
+			rc = IDN2_MALLOC;
+		const char *message = ftl_rs_idn2_strerror(rc);
+#else
 		const int rc = idn2_to_ascii_lz(domain, &punycode, IDN2_NFC_INPUT | IDN2_NONTRANSITIONAL);
+		const char *message = idn2_strerror(rc);
+#endif
 		if (rc != IDN2_OK)
 		{
 			// Invalid domain name
 			return send_json_error(api, 400,
 			                       "bad_request",
 			                       "Invalid request: Invalid domain name",
-			                       idn2_strerror(rc));
+			                       message);
 		}
 	}
 	else

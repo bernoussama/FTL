@@ -1,9 +1,9 @@
 # ftl-rs
 
 Rust parts of FTL, built as a static library and linked into `pihole-FTL`
-(see `docs/rust-rewrite-plan.md`). So far this is the Phase 1 boundary: ABI
-and layout checks, the allocation, panic and fork rules, and a fork stress
-test. No FTL module lives here yet. The C declarations are in `src/ftl_rs.h`.
+(see `docs/rust-rewrite-plan.md`). The C declarations are in `src/ftl_rs.h`.
+With `-DFTL_RUST=ON`, the Phase 2 modules below replace their C versions for
+every FTL caller; without it, FTL is the plain C build.
 
 ## Building
 
@@ -11,11 +11,12 @@ Off by default. Enable it with the CMake option `FTL_RUST`:
 
 ```sh
 ./build.sh "-DFTL_RUST=ON"
-./pihole-FTL rust-version     # ftl-rs 0.1.0 (ABI 2), then the ftl_rs_buf layout check
+./pihole-FTL rust-version     # ftl-rs 0.1.0 (ABI 3), then the layout checks
 ```
 
-CMake runs `cargo build --release --locked --offline` in the build directory
-and links `libftl_rs.a` into `pihole-FTL`.
+CMake runs `cargo build --release --locked --offline` from `rust/` (target
+directory inside the build directory) and links `libftl_rs.a` into
+`pihole-FTL`.
 
 In the docker wrapper, `RUST=1 test/docker-test.sh build` does the same inside
 `ftl-build-rust:v2.19`. The upstream build image
@@ -26,6 +27,43 @@ architecture. See `docs/testing.md`.
 
 `test/docker-test.sh cargo-test` runs `cargo test --offline` for this crate in
 that image, so the Rust unit tests run on their own.
+
+## Dependencies
+
+Third-party crates are vendored in `vendor/` and `.cargo/config.toml` points
+cargo there, so builds never touch the network. Currently: `idna` 1.1 with
+`idna_adapter` 1.1 (the unicode-rs back end, not ICU4X) and their
+dependencies, all MIT/Apache-2.0 (plus Unicode-3.0 data). To change them, edit
+`Cargo.toml`, then in the Rust image with network access run
+`cargo generate-lockfile && cargo vendor --versioned-dirs vendor`, and review
+the diff of `vendor/`. Add a crate only when writing it ourselves is not
+reasonable.
+
+## Modules
+
+Each module replaces a C module when `FTL_RUST` is on. The C version stays
+compiled as the reference, and `pihole-FTL rust-compare <module>` runs both on
+the same inputs and must report `0 differences`.
+
+- **sha256** (`src/sha256.rs`): FIPS 180-4 SHA-256 without dependencies, for
+  `pihole-FTL sha256sum`, the config checksums and the binary self-check
+  (`sha256sum()` in `src/files.c`). Files are read to EOF; with `skip_end` the
+  last 32 bytes are held back. Deliberate differences from C, which had bugs
+  here: a file shorter than 32 bytes with `skip_end` hashes as empty (C
+  underflowed and hashed everything), and a directory or a read error is an
+  error (C returned a hash of what it had read).
+- **idn** (`src/idn.rs`, `src/idn/`): IDNA conversion for `pihole-FTL idn2`, the
+  list and search API and gravity list parsing (dnsmasq keeps libidn2). A port
+  of libidn2 2.3.8 lookup with `IDN2_NONTRANSITIONAL`: TR46 mapping plus the
+  IDNA2008 rules, with libidn2's error codes and messages. `src/idn/tables.rs`
+  is generated from the Unicode 15.1.0 files in `data/` by
+  `tools/gen_idna2008.py` (do not edit it by hand). Input must be UTF-8.
+  `rust-compare idn2` checks every code point, round trips and error texts
+  (2.36 million inputs).
+- **complete** (`src/complete.rs`): `pihole-FTL --complete`. Rust holds the
+  completion rules; C passes a snapshot of the config items
+  (`ftl_rs_conf_entry`, layout-checked by `rust-version`) only for `--config`.
+  Output is byte-identical to `suggest_complete_c()` (`rust-compare complete`).
 
 ## Rules
 

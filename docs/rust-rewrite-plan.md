@@ -70,7 +70,7 @@ Every module goes through the same loop:
 
 | # | Module | Notes |
 |---|---|---|
-| 2 | Small utilities: sha256, idn2, `--complete` | Proves the whole loop end to end. The `idna` crate supports the non-transitional mode `:1746` needs (ß stays ß). |
+| 2 | Small utilities: sha256, idn2, `--complete` | Proves the whole loop end to end. **Done through "Compare" and "Switch over"** (see below). |
 | 3 | Archive parsing for teleporter (tar, gzip, zip) | **Exposed to input users upload.** The spec is the reported sizes plus a decompression round trip (`:2294`), not identical compressed bytes (gzip embeds mtime, `src/zip/gzip.c:83`). Port the tar/gzip harness cases. |
 | 4 | Config (`pihole.toml`, `FTLCONF_` env vars, validators, `--config`) | Rust works on copied snapshots and C keeps the `lock_shm` swap (`src/config/config.c:259`, `:2193`). Preserve when and how often files get rewritten; the totals in `test_final.bats:47` are scenario-specific and differ on riscv64. |
 | 5 | Regex extensions (`;querytype=`, `;reply=`, `;invert`) and the `regex-test` CLI | **Keep TRE in C behind FFI.** It provides approximate matching, backreferences, `(?#)` comments and the exact error text tests check (`:886`–`:1227`). Porting TRE is a separate, optional project. Respect the regex lifetime fixes (`bbe1718e`, `9e1e5065`). |
@@ -79,6 +79,16 @@ Every module goes through the same loop:
 | 8 | HTTP API and web server, replacing civetweb; Lua pages via `mlua` against the existing Lua | **Exposed to the network.** The spec is the whole pytest suite (auth, mutations, OpenAPI). Must handle forking explicitly. |
 | 9 | Shared-memory rewrite and the global lock | Only after every caller goes through the boundary rules. This is where API-vs-DNS lock contention gets fixed. |
 | 10 | NTP, `ptr`, X.509, arp-scan, dhcp-discover | Rewrite X.509 tests that check mbedTLS-specific output (`:2200`, `:2226`) into behaviour tests. |
+
+### Phase 2 status
+
+Done on `rust-rewrite` (2026-11-09). With `-DFTL_RUST=ON` all three modules replace C for every FTL caller; the C code stays compiled as the reference and is deleted after a stable release ("Delete" step).
+
+- sha256: own implementation, no crates. `rust-compare sha256`: 4,177 buffers against nettle, 0 differences. Deliberately differs from C where C had bugs (`skip_end` on a file shorter than 32 bytes, directories and read errors), see `rust/README.md`.
+- idn2: the `idna` crate alone was not enough. It implements UTS 46 and accepts names IDNA2008 forbids (`😀.com`), which libidn2 rejects. The port adds the IDNA2008 rules with tables generated from Unicode 15.1.0, and covers the CLI, the list and search API and gravity list parsing (dnsmasq keeps libidn2). `rust-compare idn2`: 2.36 million inputs (every code point in two positions, decode round trips, edge cases, error texts), 0 differences. Not covered: the `_lz` locale conversion (Rust takes UTF-8 only; identical in FTL's UTF-8 setup) and domains near the 255-byte limit after NFC.
+- `--complete`: Rust holds the rules, C passes a config snapshot (`ftl_rs_conf_entry`, layout-checked). `rust-compare complete`: 7,838 command lines, byte-identical.
+- Goldens (`sha256`, `idn2`, `complete`) pass unchanged on both builds, and the full suite passes on both.
+- Binary size (amd64, static): 29,095,353 bytes for C, 30,011,889 with the Rust modules (+916 KB, mostly the Unicode tables of `idna` and the IDNA2008 table).
 
 **Deferred:** dnsmasq stays in C. Budget ongoing work merging upstream dnsmasq releases and keeping FTL's hooks working. If its DNS side is replaced later, the TXT buffer fix (`57878df1`) and the DHCP thread-ownership fix (`f8a939cf`) become requirements to carry over.
 

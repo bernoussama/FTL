@@ -1,0 +1,6 @@
+## command: bash ./teleporter/import.sh missing-file
+## exit: 1
+## stdout
+Failed to open does-not-exist.zip for reading: No such file or directory
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

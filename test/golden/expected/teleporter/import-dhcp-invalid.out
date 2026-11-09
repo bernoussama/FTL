@@ -1,0 +1,7 @@
+## command: bash ./teleporter/import.sh dhcp-invalid
+## exit: 0
+## stdout
+Not importing etc/pihole/dhcp.leases: not a DHCP lease database
+Imported etc/pihole/dhcp.leases
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

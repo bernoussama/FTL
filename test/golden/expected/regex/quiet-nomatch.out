@@ -1,0 +1,4 @@
+## command: ./regex/rt.sh -q regex-test 'fbcdn.net' 'g'
+## exit: 2
+## stdout
+## stderr

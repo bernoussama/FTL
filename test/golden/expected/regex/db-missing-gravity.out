@@ -1,0 +1,17 @@
+## command: ./regex/gravity.sh missing; ./regex/rt.sh regex-test 'f'
+## exit: 2
+## stdout
+[i] Loading regex filters from database...
+gravityDB_open(): /etc/pihole/gravity.db does not exist
+gravityDB_count(4): Gravity database not available
+Database query failed, assuming there are no deny regex entries
+gravityDB_open(): /etc/pihole/gravity.db does not exist
+gravityDB_count(5): Gravity database not available
+Database query failed, assuming there are no allow regex entries
+    Compiled 0 deny and 0 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

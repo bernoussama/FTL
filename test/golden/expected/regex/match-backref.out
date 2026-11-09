@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'abc.abc' '([a-z]*)\.\1'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "abc.abc"...
+    ([a-z]*)\.\1 matches
+   Time: <MSEC>
+## stderr

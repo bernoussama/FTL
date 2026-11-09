@@ -1,0 +1,11 @@
+## command: ./regex/gravity.sh empty-row; ./regex/rt.sh regex-test 'anything.example'
+## exit: 2
+## stdout
+[i] Loading regex filters from database...
+    Compiled 11 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

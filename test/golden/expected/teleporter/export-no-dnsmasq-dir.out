@@ -1,0 +1,11 @@
+## command: bash ./teleporter/export.sh no-dnsmasq-dir
+## exit: 0
+## stdout
+export exit: 0
+etc/hosts	deflate	<size>	System's HOSTS file
+etc/pihole/dhcp.leases	deflate	68	DHCP leases file
+etc/pihole/gravity.db	deflate	<size>	Pi-hole's gravity database
+etc/pihole/pihole-FTL.db	deflate	<size>	Pi-hole's FTL database
+etc/pihole/pihole.toml	deflate	342	Pi-hole's configuration
+testzip	ok
+## stderr

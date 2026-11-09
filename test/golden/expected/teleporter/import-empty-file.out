@@ -1,0 +1,6 @@
+## command: bash ./teleporter/import.sh empty-file
+## exit: 1
+## stdout
+ZIP archive input.zip has an invalid size (0 bytes, max. 134217728 bytes)
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

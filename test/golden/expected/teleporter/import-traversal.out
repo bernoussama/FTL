@@ -1,0 +1,14 @@
+## command: bash ./teleporter/import.sh traversal
+## exit: 0
+## stdout
+Skipping file ../ftl-traversal-probe in Teleporter archive
+Skipping file /ftl-traversal-abs in Teleporter archive
+Skipping file etc/pihole/../dhcp.leases in Teleporter archive
+Skipping file ETC/PIHOLE/PIHOLE.TOML in Teleporter archive
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+not created: /ftl-traversal-abs
+not created: /etc/ftl-traversal-probe
+not created: /tmp/ftl-traversal-probe
+not created: /etc/dhcp.leases
+not created: ./etc
+## stderr

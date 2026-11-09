@@ -1,0 +1,6 @@
+## command: ./database/ftl.sh abc.db .version
+## exit: 0
+## stdout
+SQLite <VERSION>
+<COMPILER>
+## stderr

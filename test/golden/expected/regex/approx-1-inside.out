@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'foobrzap' 'foo(bar){~1}zap'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "foobrzap"...
+    foo(bar){~1}zap matches
+   Time: <MSEC>
+## stderr

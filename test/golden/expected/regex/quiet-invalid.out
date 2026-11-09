@@ -1,0 +1,5 @@
+## command: ./regex/rt.sh -q regex-test 'fbcdn.net' 'g{x}'
+## exit: 1
+## stdout
+Invalid regex CLI filter "g{x}": Invalid contents of {}
+## stderr

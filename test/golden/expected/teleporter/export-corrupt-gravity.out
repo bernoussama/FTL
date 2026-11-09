@@ -1,0 +1,7 @@
+## command: bash ./teleporter/export.sh corrupt-gravity
+## exit: 1
+## stdout
+Failed to attach database "/etc/pihole/gravity.db" to in-memory database: file is not a database
+Failed to create Teleporter ZIP file: Failed to create gravity database for heap ZIP archive!
+archives in the directory: 0
+## stderr

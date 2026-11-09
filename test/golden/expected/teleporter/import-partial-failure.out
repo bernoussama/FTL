@@ -1,0 +1,32 @@
+## command: bash ./teleporter/import.sh partial-failure
+## exit: 1
+## stdout
+Wrote config file:
+ - 167 total entries
+ - 164 entries are default
+ - 3 entries are modified
+ - 0 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+Failed to read Teleporter ZIP file: File etc/pihole/gravity.db in ZIP archive is not a SQLite3 database file (no header)
+Hint: 
+tree: changes (- before, + after)
+--- before.tree
++++ after.tree
+@@ -1,7 +1,14 @@
+ /etc/dnsmasq.d/01-pihole.conf 5bb0ca3fac6a77e7
+ /etc/dnsmasq.d/04-pihole-static-dhcp.conf f0f051052433432b
+ /etc/dnsmasq.d/05-pihole-custom-cname.conf dd743f441f7598d7
++/etc/pihole/config_backups/ directory
++/etc/pihole/config_backups/pihole.toml.1 e74fe178e711bf98
++/etc/pihole/config_backups/pihole.toml.2 e74fe178e711bf98
+ /etc/pihole/dhcp.leases c856cd63dbef0651
++/etc/pihole/dnsmasq.conf b1b699d0e24eefe0
+ /etc/pihole/gravity.db sqlite-dump 84bdda6d6dbd6ed2
++/etc/pihole/hosts/ directory
++/etc/pihole/hosts/custom.list 3b77249dfc2d2fd5
+ /etc/pihole/pihole-FTL.db sqlite-dump 0ea5cb9bdb992ecc
+-/etc/pihole/pihole.toml e74fe178e711bf98
++/etc/pihole/pihole.toml c5d3d36a5668c928
++/etc/pihole/pihole.toml.lock e3b0c44298fc1c14
+    "1.1.1.1"
+## stderr

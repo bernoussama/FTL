@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh gravity
+## exit: 1
+## stdout
+Incorrect usage of pihole-FTL gravity subcommand
+## stderr

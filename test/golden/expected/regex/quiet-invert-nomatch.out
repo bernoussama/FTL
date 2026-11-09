@@ -1,0 +1,4 @@
+## command: ./regex/rt.sh -q regex-test 'g' 'g;invert'
+## exit: 2
+## stdout
+## stderr

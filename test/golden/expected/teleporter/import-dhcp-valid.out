@@ -1,0 +1,20 @@
+## command: bash ./teleporter/import.sh dhcp-valid
+## exit: 0
+## stdout
+Imported etc/pihole/dhcp.leases
+tree: changes (- before, + after)
+--- before.tree
++++ after.tree
+@@ -1,7 +1,9 @@
+ /etc/dnsmasq.d/01-pihole.conf 5bb0ca3fac6a77e7
+ /etc/dnsmasq.d/04-pihole-static-dhcp.conf f0f051052433432b
+ /etc/dnsmasq.d/05-pihole-custom-cname.conf dd743f441f7598d7
+-/etc/pihole/dhcp.leases c856cd63dbef0651
++/etc/pihole/config_backups/ directory
++/etc/pihole/config_backups/dhcp.leases.1 c856cd63dbef0651
++/etc/pihole/dhcp.leases 8f129065f0a84ef3
+ /etc/pihole/gravity.db sqlite-dump 84bdda6d6dbd6ed2
+ /etc/pihole/pihole-FTL.db sqlite-dump 0ea5cb9bdb992ecc
+ /etc/pihole/pihole.toml e74fe178e711bf98
+dhcp.leases: now the leases of the archive
+## stderr

@@ -1,0 +1,8 @@
+## command: bash ./teleporter/export.sh extra-args
+## exit: 1
+## stdout
+pihole-FTL: invalid option -- '--teleporter'
+Command: '/app/pihole-FTL --teleporter export.zip extra'
+Try '/app/pihole-FTL --help' for more information
+archives in the directory: 0
+## stderr

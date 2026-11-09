@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test '__abc#LMN012$x%yz789*' '[[:digit:]a-z#$%]+'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "__abc#LMN012$x%yz789*"...
+    [[:digit:]a-z#$%]+ matches
+   Time: <MSEC>
+## stderr

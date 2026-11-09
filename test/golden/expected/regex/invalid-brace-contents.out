@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' 'f{x}'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "f{x}": Invalid contents of {}
+## stderr

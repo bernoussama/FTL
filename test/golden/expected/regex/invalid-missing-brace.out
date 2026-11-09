@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' '{1'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "{1": Missing '}'
+## stderr

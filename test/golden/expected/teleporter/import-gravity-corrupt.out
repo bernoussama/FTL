@@ -1,0 +1,8 @@
+## command: bash ./teleporter/import.sh gravity-corrupt
+## exit: 1
+## stdout
+Failed to read Teleporter ZIP file: Database file in ZIP archive is not a valid SQLite3 database (integrity check failed)
+Hint: *** in database main ***
+Tree 2 page 2: btreeInitPage() returns error code 11
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

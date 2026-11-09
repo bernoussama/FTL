@@ -1,0 +1,12 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;querytype=A'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "f"...
+    f;querytype=A matches
+    Hint: This regex matches only specific query types:
+      - A
+   Time: <MSEC>
+## stderr

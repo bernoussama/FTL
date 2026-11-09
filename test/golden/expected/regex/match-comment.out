@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'aa' '^a(?#some comment)a$'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "aa"...
+    ^a(?#some comment)a$ matches
+   Time: <MSEC>
+## stderr

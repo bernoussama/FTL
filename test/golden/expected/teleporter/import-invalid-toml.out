@@ -1,0 +1,8 @@
+## command: bash ./teleporter/import.sh invalid-toml
+## exit: 1
+## stdout
+ZIP TOML file is not valid: (line 1) missing right-bracket
+Failed to read Teleporter ZIP file: File etc/pihole/pihole.toml in ZIP archive is not a valid TOML file
+Hint: 
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

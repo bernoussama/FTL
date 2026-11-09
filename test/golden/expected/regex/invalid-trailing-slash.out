@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' 'x\'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "x\": Trailing backslash
+## stderr

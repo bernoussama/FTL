@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test '12345' '([0-9]{5})\1'
+## exit: 2
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "12345"...
+    NO MATCH!
+   Time: <MSEC>
+## stderr

@@ -1,0 +1,41 @@
+## command: bash ./teleporter/export.sh missing-toml
+## exit: 1
+## stdout
+Config file /etc/pihole/pihole.toml not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.1 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.2 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.3 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.4 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.5 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.6 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.7 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.8 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.9 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.10 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.11 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.12 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.13 not available (r): No such file or directory
+Cannot parse TOML file: 
+Config backup file /etc/pihole/config_backups/pihole.toml.14 not available (r): No such file or directory
+Cannot parse TOML file: 
+No config file nor backup available, using defaults
+Failed to create Teleporter ZIP file: Failed to add /etc/pihole/pihole.toml to heap ZIP archive!
+archives in the directory: 0
+/etc/pihole after the export:
+dhcp.leases
+gravity.db
+pihole-FTL.db
+## stderr

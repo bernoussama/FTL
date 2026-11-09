@@ -1,0 +1,42 @@
+# Teleporter export and import via "pihole-FTL --teleporter" (Phase 3: archive
+# parsing, exposed to uploads). The helpers set up /etc/pihole the way run.sh
+# does, build their own archives and clean up. Export cases: the archive that
+# "--teleporter" writes. Import cases: "--teleporter FILE", with valid and
+# invalid input. See test/golden/README.md for what is spec and what is C.
+export-name | bash ./teleporter/export.sh name
+export-entries | bash ./teleporter/export.sh entries
+export-verbatim | bash ./teleporter/export.sh verbatim
+export-gravity-rows | bash ./teleporter/export.sh gravity
+export-ftl-rows | bash ./teleporter/export.sh ftl
+export-no-dhcp-leases | bash ./teleporter/export.sh no-dhcp-leases
+export-no-dnsmasq-dir | bash ./teleporter/export.sh no-dnsmasq-dir
+export-missing-toml | bash ./teleporter/export.sh missing-toml
+export-missing-gravity | bash ./teleporter/export.sh missing-gravity
+export-corrupt-ftl-db | bash ./teleporter/export.sh corrupt-ftl
+export-corrupt-gravity | bash ./teleporter/export.sh corrupt-gravity
+export-extra-args | bash ./teleporter/export.sh extra-args
+import-roundtrip-gravity | bash ./teleporter/import.sh roundtrip-gravity
+import-writes | bash ./teleporter/import.sh writes
+import-ftl-db-ignored | bash ./teleporter/import.sh ftl-db-ignored
+import-dnsmasq-d-ignored | bash ./teleporter/import.sh dnsmasq-d-ignored
+import-dhcp-valid | bash ./teleporter/import.sh dhcp-valid
+import-dhcp-invalid | bash ./teleporter/import.sh dhcp-invalid
+import-dhcp-empty | bash ./teleporter/import.sh dhcp-empty
+import-no-entries | bash ./teleporter/import.sh no-entries
+import-traversal | bash ./teleporter/import.sh traversal
+import-oversize-declared | bash ./teleporter/import.sh oversize-declared
+import-empty-file | bash ./teleporter/import.sh empty-file
+import-over-limit | bash ./teleporter/import.sh over-limit
+import-at-limit | bash ./teleporter/import.sh at-limit
+import-random-bytes | bash ./teleporter/import.sh random-bytes
+import-truncated | bash ./teleporter/import.sh truncated
+import-missing-file | bash ./teleporter/import.sh missing-file
+import-v5-targz | bash ./teleporter/import.sh v5-targz
+import-invalid-toml | bash ./teleporter/import.sh invalid-toml
+import-empty-toml | bash ./teleporter/import.sh empty-toml
+import-invalid-value | bash ./teleporter/import.sh invalid-value
+import-gravity-no-header | bash ./teleporter/import.sh gravity-no-header
+import-gravity-short | bash ./teleporter/import.sh gravity-short
+import-gravity-corrupt | bash ./teleporter/import.sh gravity-corrupt
+import-partial-failure | bash ./teleporter/import.sh partial-failure
+import-gravity-only | bash ./teleporter/import.sh gravity-only

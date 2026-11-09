@@ -1,0 +1,12 @@
+## command: ./regex/gravity.sh bad-row; ./regex/rt.sh regex-test 'anything.example'
+## exit: 2
+## stdout
+[i] Loading regex filters from database...
+Invalid regex deny filter "f{x}": Invalid contents of {}
+    Compiled 12 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

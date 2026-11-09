@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'aa' '^[a-z]{1,3}$'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "aa"...
+    ^[a-z]{1,3}$ matches
+   Time: <MSEC>
+## stderr

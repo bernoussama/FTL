@@ -1,0 +1,27 @@
+## command: ./database/migrate.sh suite schema
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+index addinfo_by_id_idx: CREATE UNIQUE INDEX addinfo_by_id_idx ON addinfo_by_id(type,content)
+index client_by_id_client_idx: CREATE UNIQUE INDEX client_by_id_client_idx ON client_by_id(ip,name)
+index domain_by_id_domain_idx: CREATE UNIQUE INDEX domain_by_id_domain_idx ON domain_by_id(domain)
+index forward_by_id_forward_idx: CREATE UNIQUE INDEX forward_by_id_forward_idx ON forward_by_id(forward)
+index idx_queries_timestamps: CREATE INDEX idx_queries_timestamps ON "query_storage" (timestamp)
+index network_addresses_network_id_index: CREATE INDEX network_addresses_network_id_index ON network_addresses (network_id)
+index sqlite_autoindex_network_1: <no sql>
+index sqlite_autoindex_network_addresses_1: <no sql>
+table addinfo_by_id: CREATE TABLE addinfo_by_id (id INTEGER PRIMARY KEY, type INTEGER NOT NULL, content NOT NULL)
+table aliasclient: CREATE TABLE aliasclient (id INTEGER PRIMARY KEY NOT NULL, name TEXT NOT NULL, comment TEXT)
+table client_by_id: CREATE TABLE client_by_id (id INTEGER PRIMARY KEY, ip TEXT NOT NULL, name TEXT)
+table counters: CREATE TABLE counters (id INTEGER PRIMARY KEY NOT NULL, value INTEGER NOT NULL)
+table domain_by_id: CREATE TABLE domain_by_id (id INTEGER PRIMARY KEY, domain TEXT NOT NULL)
+table forward_by_id: CREATE TABLE forward_by_id (id INTEGER PRIMARY KEY, forward TEXT NOT NULL)
+table ftl: CREATE TABLE ftl (id INTEGER PRIMARY KEY NOT NULL, value BLOB NOT NULL, description TEXT)
+table message: CREATE TABLE message (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, type TEXT NOT NULL, message TEXT NOT NULL, blob1 BLOB, blob2 BLOB, blob3 BLOB, blob4 BLOB, blob5 BLOB)
+table network: CREATE TABLE "network" (id INTEGER PRIMARY KEY NOT NULL, hwaddr TEXT UNIQUE NOT NULL, interface TEXT NOT NULL, firstSeen INTEGER NOT NULL, lastQuery INTEGER NOT NULL, numQueries INTEGER NOT NULL, macVendor TEXT, aliasclient_id INTEGER)
+table network_addresses: CREATE TABLE "network_addresses" (network_id INTEGER NOT NULL, ip TEXT UNIQUE NOT NULL, lastSeen INTEGER NOT NULL DEFAULT (cast(strftime('%s', 'now') as int)), name TEXT, nameUpdated INTEGER, FOREIGN KEY(network_id) REFERENCES network(id))
+table query_storage: CREATE TABLE "query_storage" (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, type INTEGER NOT NULL, status INTEGER NOT NULL, domain INTEGER NOT NULL, client INTEGER NOT NULL, forward INTEGER, additional_info INTEGER, reply_type INTEGER, reply_time REAL, dnssec INTEGER, list_id INTEGER, ede INTEGER)
+table session: CREATE TABLE session (id INTEGER PRIMARY KEY, login_at TIMESTAMP NOT NULL, valid_until TIMESTAMP NOT NULL, remote_addr TEXT NOT NULL, user_agent TEXT, sid TEXT NOT NULL, csrf TEXT NOT NULL, tls_login BOOL, tls_mixed BOOL, app BOOL, cli BOOL, x_forwarded_for TEXT)
+table sqlite_sequence: CREATE TABLE sqlite_sequence(name,seq)
+view queries: CREATE VIEW queries AS SELECT q.id, q.timestamp, q.type, q.status, COALESCE(d.domain, q.domain) AS domain, COALESCE(c.ip, q.client) AS client, COALESCE(f.forward, q.forward) AS forward, COALESCE(a.content, q.additional_info) AS additional_info, q.reply_type, q.reply_time, q.dnssec, q.list_id, q.ede FROM query_storage q LEFT JOIN domain_by_id d ON q.domain = d.id LEFT JOIN client_by_id c ON q.client = c.id LEFT JOIN forward_by_id f ON q.forward = f.id LEFT JOIN addinfo_by_id a ON q.additional_info = a.id
+## stderr

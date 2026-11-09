@@ -1,0 +1,7 @@
+## command: bash ./teleporter/import.sh empty-toml
+## exit: 1
+## stdout
+Failed to read Teleporter ZIP file: File etc/pihole/pihole.toml in ZIP archive is empty
+Hint: 
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

@@ -1,0 +1,58 @@
+# Long-term database (pihole-FTL.db), gravity.db, the sqlite3 shell and the SQL
+# functions FTL adds (src/database/sqlite3-ext.c). Phase 6 module. The schema text
+# is FTL's own, so the spec is which objects, columns, versions, rows and file
+# modes exist, plus the exit codes and what is left on disk. Schema dumps are
+# sorted, one object per line. The daemon cases run pihole-FTL -f for each case
+# and stop it with SIGTERM. Helpers: common.sh (shared), fresh.sh, migrate.sh,
+# bad.sh (daemon); gravity.sh, ftl.sh, sqliterc.sh (no daemon).
+
+# Database created by FTL when none exists (version 1 to 22 in one start)
+fresh-schema             | ./database/fresh.sh schema
+fresh-ftl-rows           | ./database/fresh.sh ftl
+fresh-counters           | ./database/fresh.sh counters
+fresh-file-mode          | ./database/fresh.sh mode
+fresh-log                | ./database/fresh.sh log
+fresh-reopen             | ./database/fresh.sh reopen
+
+# Upgrades: from version 1 (oldest FTL can start from) and from the suite's version 9
+migrate-v1-ftl           | ./database/migrate.sh v1 ftl
+migrate-v1-schema        | ./database/migrate.sh v1 schema
+migrate-v1-rows          | ./database/migrate.sh v1 rows
+migrate-v1-log           | ./database/migrate.sh v1 log
+migrate-v1-vs-fresh      | ./database/migrate.sh v1 compare
+migrate-v9-schema        | ./database/migrate.sh suite schema
+migrate-v9-log           | ./database/migrate.sh suite log
+migrate-v9-vs-fresh      | ./database/migrate.sh suite compare
+
+# Databases FTL must not use, and must not change
+bad-zero-bytes           | ./database/bad.sh empty
+bad-newer-version        | ./database/bad.sh newer
+bad-not-sqlite           | ./database/bad.sh junk
+
+# The sqlite3 shell built into pihole-FTL (no daemon)
+sqlite3-version          | ./database/ftl.sh sqlite3 :memory: .version
+sqlite3-help             | ./database/ftl.sh sqlite3 -help
+sqlite3-select           | ./database/ftl.sh sqlite3 :memory: "SELECT 1 + 1"
+sqlite3-sql-error        | ./database/ftl.sh sqlite3 :memory: "SELECT * FROM nope"
+sqlite3-dot-db-name      | ./database/ftl.sh abc.db .version
+sqlite3-interactive      | printf '.quit\n' | ./database/ftl.sh sqlite3 -interactive
+sqlite3-sqliterc-read    | ./database/sqliterc.sh sqlite3 :memory: "SELECT 1 AS one"
+sqlite3-sqliterc-ni      | ./database/sqliterc.sh sqlite3 -ni :memory: "SELECT 1 AS one"
+
+# Custom SQL functions: subnet_match(cidr_or_ip, ip) returns the matched prefix
+# length or 0, isIPv6(text) returns 1 or 0
+subnet-hits              | ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('10.0.0.0/8', '10.1.2.3'), subnet_match('10.8.1.0/24', '10.8.1.5'), subnet_match('10.0.0.0/8', '10.8.1.5'), subnet_match('1.2.3.4', '1.2.3.4'), subnet_match('fe80::/10', 'fe80::1')"
+subnet-misses            | ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('10.0.0.0/8', '11.0.0.1'), subnet_match('10.0.0.0/8', 'fe80::1')"
+subnet-skipped-inputs    | ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('98:48:27', '98:48:27:00:00:01'), subnet_match('example.com', '1.2.3.4'), subnet_match('10.0.0.0/33', '10.0.0.1')"
+subnet-null-argument     | ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match(NULL, '1.2.3.4')"
+subnet-arg-count         | ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('10.0.0.0/8')"
+isIPv6-values            | ./database/ftl.sh sqlite3 :memory: "SELECT isIPv6('::1'), isIPv6('1.2.3.4'), isIPv6('x')"
+isIPv6-non-text          | ./database/ftl.sh sqlite3 :memory: "SELECT isIPv6(1)"
+usage-gravity-no-args    | ./database/ftl.sh gravity
+
+# gravity.db as the suite loads it, its triggers and views, and gravity CLI writes
+gravity-schema           | ./database/gravity.sh schema
+gravity-view-rows        | ./database/gravity.sh rows
+gravity-triggers         | ./database/gravity.sh triggers
+gravity-checklist        | ./database/gravity.sh checklist
+gravity-parselist        | ./database/gravity.sh parse

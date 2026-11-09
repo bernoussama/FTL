@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test
+## exit: 1
+## stdout
+pihole-FTL: invalid option -- 'regex-test' need either one or two parameters
+Try 'pihole-FTL --help' for more information
+## stderr

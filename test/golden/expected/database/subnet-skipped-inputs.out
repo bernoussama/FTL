@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('98:48:27', '98:48:27:00:00:01'), subnet_match('example.com', '1.2.3.4'), subnet_match('10.0.0.0/33', '10.0.0.1')"
+## exit: 0
+## stdout
+0|0|0
+## stderr

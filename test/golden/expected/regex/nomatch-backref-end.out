@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'foox' '(.)\1$'
+## exit: 2
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "foox"...
+    NO MATCH!
+   Time: <MSEC>
+## stderr

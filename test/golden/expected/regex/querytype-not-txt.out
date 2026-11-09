@@ -1,0 +1,26 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;querytype=!TXT'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "f"...
+    f;querytype=!TXT matches
+    Hint: This regex matches only specific query types:
+      - A
+      - AAAA
+      - ANY
+      - SRV
+      - SOA
+      - PTR
+      - NAPTR
+      - MX
+      - DS
+      - RRSIG
+      - DNSKEY
+      - NS
+      - OTHER
+      - SVCB
+      - HTTPS
+   Time: <MSEC>
+## stderr

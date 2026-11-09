@@ -1,0 +1,12 @@
+## command: bash ./teleporter/export.sh missing-gravity
+## exit: 1
+## stdout
+Failed to attach database "/etc/pihole/gravity.db" to in-memory database: unable to open database: /etc/pihole/gravity.db
+Failed to create Teleporter ZIP file: Failed to create gravity database for heap ZIP archive!
+archives in the directory: 0
+/etc/pihole after the export:
+dhcp.leases
+pihole-FTL.db
+pihole.toml
+gravity.db: not created
+## stderr

@@ -1,0 +1,25 @@
+## command: bash ./teleporter/import.sh ftl-db-ignored
+## exit: 0
+## stdout
+Wrote config file:
+ - 167 total entries
+ - 164 entries are default
+ - 3 entries are modified
+ - 0 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+Skipping file etc/hosts in Teleporter archive
+Skipping file etc/dnsmasq.d/01-pihole.conf in Teleporter archive
+Skipping file etc/dnsmasq.d/04-pihole-static-dhcp.conf in Teleporter archive
+Skipping file etc/dnsmasq.d/05-pihole-custom-cname.conf in Teleporter archive
+Skipping file etc/pihole/pihole-FTL.db in Teleporter archive
+Imported etc/pihole/pihole.toml
+Imported etc/pihole/dhcp.leases
+Imported etc/pihole/gravity.db->group
+Imported etc/pihole/gravity.db->adlist
+Imported etc/pihole/gravity.db->adlist_by_group
+Imported etc/pihole/gravity.db->domainlist
+Imported etc/pihole/gravity.db->domainlist_by_group
+Imported etc/pihole/gravity.db->client
+Imported etc/pihole/gravity.db->client_by_group
+pihole-FTL.db: unchanged by the import
+## stderr

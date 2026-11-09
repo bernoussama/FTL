@@ -1,0 +1,5 @@
+# Small list for gravity checkList and gravity parseList
+ads.example.net
+0.0.0.0 ads.example.org
+UPPER.Example.COM
+not a domain!

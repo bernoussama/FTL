@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT isIPv6('::1'), isIPv6('1.2.3.4'), isIPv6('x')"
+## exit: 0
+## stdout
+1|0|0
+## stderr

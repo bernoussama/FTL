@@ -1,0 +1,6 @@
+## command: bash ./teleporter/import.sh oversize-declared
+## exit: 0
+## stdout
+Skipping file 0 (etc/pihole/pihole.toml) in ZIP archive: uncompressed size 268435457 is too large
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

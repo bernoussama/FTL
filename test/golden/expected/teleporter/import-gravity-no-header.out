@@ -1,0 +1,7 @@
+## command: bash ./teleporter/import.sh gravity-no-header
+## exit: 1
+## stdout
+Failed to read Teleporter ZIP file: File etc/pihole/gravity.db in ZIP archive is not a SQLite3 database file (no header)
+Hint: 
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

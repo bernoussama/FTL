@@ -1,0 +1,7 @@
+## command: ./database/migrate.sh v1 compare
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+pihole-FTL exit code after SIGTERM: 0
+migrated schema identical to a fresh one
+## stderr

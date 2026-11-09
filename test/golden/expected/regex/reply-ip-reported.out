@@ -1,0 +1,11 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;reply=1.2.3.4;reply=fe80::1234'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "f"...
+    f;reply=1.2.3.4;reply=fe80::1234 matches
+    Hint: This regex forces reply type IP
+   Time: <MSEC>
+## stderr

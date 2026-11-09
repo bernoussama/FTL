@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' '[g-1]'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "[g-1]": Invalid character range
+## stderr

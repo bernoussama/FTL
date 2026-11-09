@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test '3oifaowefbaoraofuiebofasebfaobfaorfeoaro' '(foobar){+1 -1}'
+## exit: 2
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "3oifaowefbaoraofuiebofasebfaobfaorfeoaro"...
+    NO MATCH!
+   Time: <MSEC>
+## stderr

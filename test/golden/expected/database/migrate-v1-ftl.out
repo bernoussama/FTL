@@ -1,0 +1,8 @@
+## command: ./database/migrate.sh v1 ftl
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+0|22|Database version
+1|0|Unix timestamp of the latest stored query
+2|<UNIX>|Unix timestamp of the database creation
+## stderr

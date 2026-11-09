@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' 'a**'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "a**": Invalid use of repetition operators
+## stderr

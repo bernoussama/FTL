@@ -1,0 +1,7 @@
+## command: ./database/fresh.sh counters
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+0|0
+1|0
+## stderr

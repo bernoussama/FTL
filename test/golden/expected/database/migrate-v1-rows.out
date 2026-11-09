@@ -1,0 +1,7 @@
+## command: ./database/migrate.sh v1 rows
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+1|1700000000|1|2|example.com|192.0.2.1|8.8.8.8
+2|1700000001|28|1|ads.example.net|192.0.2.2|<null>
+## stderr

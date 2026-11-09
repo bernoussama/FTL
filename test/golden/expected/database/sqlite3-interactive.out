@@ -1,0 +1,8 @@
+## command: printf '.quit\n' | ./database/ftl.sh sqlite3 -interactive
+## exit: 0
+## stdout
+Pi-hole FTL <VERSION>
+SQLite version <VERSION>
+Enter ".help" for usage hints.
+sqlite> .quit
+## stderr

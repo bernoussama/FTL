@@ -1,0 +1,13 @@
+## command: ./database/gravity.sh rows
+## exit: 0
+## stdout
+domainlist|18
+adlist|2
+group|6
+domainlist_by_group|20
+vw_denylist|2
+vw_allowlist|3
+vw_regex_denylist|12
+vw_regex_allowlist|2
+vw_adlist|2
+## stderr

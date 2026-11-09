@@ -1,0 +1,8 @@
+## command: ./database/fresh.sh reopen
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+pihole-FTL exit code after SIGTERM: 0
+database upgrades on the second start: 0
+schema unchanged on the second start
+## stderr

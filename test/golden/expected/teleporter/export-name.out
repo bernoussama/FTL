@@ -1,0 +1,6 @@
+## command: bash ./teleporter/export.sh name
+## exit: 0
+## stdout
+pi-hole_<HOST>_teleporter_<DATE>.zip
+archives in the directory: 1
+## stderr

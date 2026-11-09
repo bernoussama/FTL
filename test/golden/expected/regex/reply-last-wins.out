@@ -1,0 +1,11 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;reply=REFUSED;reply=NODATA'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "f"...
+    f;reply=REFUSED;reply=NODATA matches
+    Hint: This regex forces reply type NODATA
+   Time: <MSEC>
+## stderr

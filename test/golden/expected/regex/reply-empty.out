@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply='
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "f;reply=": Unknown reply type ""
+## stderr

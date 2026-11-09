@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT * FROM nope"
+## exit: 1
+## stdout
+## stderr
+Parse error in 2nd command line argument: no such table: nope

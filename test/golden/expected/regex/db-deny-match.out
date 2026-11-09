@@ -1,0 +1,12 @@
+## command: ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex7.ftl'
+## exit: 0
+## stdout
+[i] Loading regex filters from database...
+    Compiled 11 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    regex[0-9].ftl matches (regex blacklist, DB ID 6)
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

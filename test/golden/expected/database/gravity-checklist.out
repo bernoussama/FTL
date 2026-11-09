@@ -1,0 +1,8 @@
+## command: ./database/gravity.sh checklist
+## exit: 0
+## stdout
+  [✗] Invalid domain on line 5: not
+  [✗] Invalid domain on line 5: a
+  [✗] Invalid domain on line 5: domain!
+  [✓] Parsed 3 exact domains and 0 ABP-style domains (blocking, ignored 3 non-domain entries)
+## stderr

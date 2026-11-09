@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT isIPv6(1)"
+## exit: 1
+## stdout
+## stderr
+Error in 2nd command line argument: Invoked isIPv6() with non-text argument

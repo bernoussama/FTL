@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;querytype=FOO'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "f;querytype=FOO": Unknown querytype "FOO"
+## stderr

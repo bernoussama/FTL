@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' '(a)\2'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "(a)\2": Invalid back reference
+## stderr

@@ -1,0 +1,65 @@
+## command: bash ./teleporter/export.sh gravity
+## exit: 0
+## stdout
+export exit: 0
+tables: adlist client domainlist group adlist_by_group client_by_group domainlist_by_group 
+INSERT INTO "group" VALUES(0,1,'Default',<EPOCH>,<EPOCH>,'The default group');
+INSERT INTO "group" VALUES(1,0,'Test group',<EPOCH>,<EPOCH>,'A disabled test group');
+INSERT INTO "group" VALUES(2,1,'Second test group',<EPOCH>,<EPOCH>,'A group associated with client IP 127.0.0.2');
+INSERT INTO "group" VALUES(3,1,'Third test group',<EPOCH>,<EPOCH>,'A group associated with client IP 127.0.0.3');
+INSERT INTO "group" VALUES(4,1,'MAC client test group',<EPOCH>,<EPOCH>,'A group associated with client MAC aa:bb:cc:dd:ee:ff');
+INSERT INTO "group" VALUES(5,1,'Interface client test group',<EPOCH>,<EPOCH>,'A group associated with client interface enp0s123');
+INSERT INTO adlist VALUES(1,'https://pi-hole.net/block.txt',1,<EPOCH>,<EPOCH>,'Fake block-list',<EPOCH>,2000,2,1,0,0);
+INSERT INTO adlist VALUES(2,'https://pi-hole.net/allow.txt',1,<EPOCH>,<EPOCH>,'Fake allow-list',<EPOCH>,2000,2,1,0,1);
+INSERT INTO adlist_by_group VALUES(1,0);
+INSERT INTO adlist_by_group VALUES(2,0);
+INSERT INTO adlist_by_group VALUES(1,2);
+INSERT INTO domainlist VALUES(1,0,'allowed.ftl',1,<EPOCH>,<EPOCH>,'Migrated from /etc/pihole/whitelist.txt');
+INSERT INTO domainlist VALUES(2,0,'regex1.ftl',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(3,2,'regex2',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(4,2,'^gravity-allowed',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(5,1,'denied.ftl',1,<EPOCH>,<EPOCH>,'Migrated from /etc/pihole/blacklist.txt');
+INSERT INTO domainlist VALUES(6,3,'regex[0-9].ftl',1,<EPOCH>,<EPOCH>,'Migrated from /etc/pihole/regex.list');
+INSERT INTO domainlist VALUES(7,3,'^regex-NXDOMAIN$;reply=NXDOMAIN',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(8,3,'^regex-NODATA$;reply=NODATA',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(9,3,'^regex-REFUSED$;reply=REFUSED',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(10,3,'^regex-REPLYv4$;reply=1.2.3.4',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(11,3,'^regex-REPLYv6$;reply=fe80::1234',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(12,3,'^regex-REPLYv46$;reply=1.2.3.4;reply=fe80::1234',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(13,3,'^regex-A$;querytype=A',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(14,3,'^regex-notA$;querytype=!A',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(15,3,'^regex-multiple.ftl$;querytype=ANY,HTTPS,SVCB;reply=refused',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(16,3,'^regex-notMultiple.ftl$;querytype=!ANY,HTTPS,SVCB;reply=refused',1,<EPOCH>,<EPOCH>,'');
+INSERT INTO domainlist VALUES(17,1,'blacklisted-group-disabled.com',1,<EPOCH>,<EPOCH>,'Entry disabled by a group');
+INSERT INTO domainlist VALUES(18,0,'mask.icloud.com',1,<EPOCH>,<EPOCH>,'Allowing special domain');
+INSERT INTO domainlist_by_group VALUES(1,0);
+INSERT INTO domainlist_by_group VALUES(2,0);
+INSERT INTO domainlist_by_group VALUES(3,0);
+INSERT INTO domainlist_by_group VALUES(4,0);
+INSERT INTO domainlist_by_group VALUES(5,0);
+INSERT INTO domainlist_by_group VALUES(6,0);
+INSERT INTO domainlist_by_group VALUES(7,0);
+INSERT INTO domainlist_by_group VALUES(8,0);
+INSERT INTO domainlist_by_group VALUES(9,0);
+INSERT INTO domainlist_by_group VALUES(10,0);
+INSERT INTO domainlist_by_group VALUES(11,0);
+INSERT INTO domainlist_by_group VALUES(12,0);
+INSERT INTO domainlist_by_group VALUES(13,0);
+INSERT INTO domainlist_by_group VALUES(14,0);
+INSERT INTO domainlist_by_group VALUES(15,0);
+INSERT INTO domainlist_by_group VALUES(16,0);
+INSERT INTO domainlist_by_group VALUES(17,0);
+INSERT INTO domainlist_by_group VALUES(15,1);
+INSERT INTO domainlist_by_group VALUES(6,2);
+INSERT INTO domainlist_by_group VALUES(18,2);
+INSERT INTO client VALUES(1,'127.0.0.1',<EPOCH>,<EPOCH>,NULL);
+INSERT INTO client VALUES(2,'127.0.0.2',<EPOCH>,<EPOCH>,NULL);
+INSERT INTO client VALUES(3,'127.0.0.3',<EPOCH>,<EPOCH>,NULL);
+INSERT INTO client VALUES(4,'aa:bb:cc:dd:ee:ff',<EPOCH>,<EPOCH>,NULL);
+INSERT INTO client VALUES(5,':enp0s123',<EPOCH>,<EPOCH>,NULL);
+INSERT INTO client_by_group VALUES(1,0);
+INSERT INTO client_by_group VALUES(2,2);
+INSERT INTO client_by_group VALUES(3,3);
+INSERT INTO client_by_group VALUES(4,4);
+INSERT INTO client_by_group VALUES(5,5);
+## stderr

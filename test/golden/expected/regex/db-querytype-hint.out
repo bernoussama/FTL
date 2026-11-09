@@ -1,0 +1,14 @@
+## command: ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex-A'
+## exit: 0
+## stdout
+[i] Loading regex filters from database...
+    Compiled 11 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    ^regex-A$;querytype=A matches (regex blacklist, DB ID 13)
+    Hint: This regex matches only specific query types:
+      - A
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

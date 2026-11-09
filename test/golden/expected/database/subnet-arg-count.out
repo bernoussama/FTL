@@ -1,0 +1,7 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT subnet_match('10.0.0.0/8')"
+## exit: 1
+## stdout
+## stderr
+Parse error in 2nd command line argument: wrong number of arguments to function subnet_match()
+  SELECT subnet_match('10.0.0.0/8')
+         ^--- error here

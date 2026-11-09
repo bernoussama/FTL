@@ -1,0 +1,12 @@
+## command: ./database/gravity.sh parse
+## exit: 0
+## stdout
+  [✓] Parsed 3 exact domains and 0 ABP-style domains (blocking, ignored 3 non-domain entries)
+      Sample of non-domain entries:
+        - not
+        - a
+        - domain!
+ads.example.net
+ads.example.org
+upper.example.com
+## stderr

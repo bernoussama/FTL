@@ -1,0 +1,13 @@
+## command: ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex-NXDOMAIN'
+## exit: 0
+## stdout
+[i] Loading regex filters from database...
+    Compiled 11 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    ^regex-NXDOMAIN$;reply=NXDOMAIN matches (regex blacklist, DB ID 7)
+    Hint: This regex forces reply type NXDOMAIN
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    Time: <MSEC>
+## stderr

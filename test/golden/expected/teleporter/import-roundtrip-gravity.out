@@ -1,0 +1,40 @@
+## command: bash ./teleporter/import.sh roundtrip-gravity
+## exit: 0
+## stdout
+export exit: 0
+state changed: gravity, pihole.toml, dhcp.leases
+Wrote config file:
+ - 167 total entries
+ - 164 entries are default
+ - 3 entries are modified
+ - 0 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+Skipping file etc/hosts in Teleporter archive
+Skipping file etc/dnsmasq.d/01-pihole.conf in Teleporter archive
+Skipping file etc/dnsmasq.d/04-pihole-static-dhcp.conf in Teleporter archive
+Skipping file etc/dnsmasq.d/05-pihole-custom-cname.conf in Teleporter archive
+Skipping file etc/pihole/pihole-FTL.db in Teleporter archive
+Imported etc/pihole/pihole.toml
+Imported etc/pihole/dhcp.leases
+Imported etc/pihole/gravity.db->group
+Imported etc/pihole/gravity.db->adlist
+Imported etc/pihole/gravity.db->adlist_by_group
+Imported etc/pihole/gravity.db->domainlist
+Imported etc/pihole/gravity.db->domainlist_by_group
+Imported etc/pihole/gravity.db->client
+Imported etc/pihole/gravity.db->client_by_group
+gravity: differs from the exported state
+--- gravity.before
++++ gravity.after
+@@ -155,7 +155,7 @@
+ CREATE TABLE IF NOT EXISTS sqlite_sequence(name,seq);
+ DELETE FROM sqlite_sequence;
+ INSERT INTO sqlite_sequence VALUES('group',5);
+-INSERT INTO sqlite_sequence VALUES('domainlist',18);
++INSERT INTO sqlite_sequence VALUES('domainlist',19);
+ INSERT INTO sqlite_sequence VALUES('adlist',2);
+ INSERT INTO sqlite_sequence VALUES('client',5);
+ CREATE VIEW vw_allowlist AS SELECT domain, domainlist.id AS id, domainlist_by_group.group_id AS group_id
+    "9.9.9.9"
+/etc/pihole/dhcp.leases: identical to the fixture it was set up from
+## stderr

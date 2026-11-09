@@ -1,0 +1,11 @@
+## command: ./regex/rt.sh regex-test 'fbcdn.net' 'g;invert'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "fbcdn.net"...
+    g;invert matches
+    Hint: This regex is inverted
+   Time: <MSEC>
+## stderr

@@ -1,0 +1,34 @@
+## command: bash ./teleporter/import.sh gravity-only
+## exit: 0
+## stdout
+Imported etc/pihole/gravity.db->group
+Imported etc/pihole/gravity.db->adlist
+Imported etc/pihole/gravity.db->adlist_by_group
+Imported etc/pihole/gravity.db->domainlist
+Imported etc/pihole/gravity.db->domainlist_by_group
+Imported etc/pihole/gravity.db->client
+Imported etc/pihole/gravity.db->client_by_group
+gravity: differs from the exported state
+--- gravity.before
++++ gravity.after
+@@ -155,7 +155,7 @@
+ CREATE TABLE IF NOT EXISTS sqlite_sequence(name,seq);
+ DELETE FROM sqlite_sequence;
+ INSERT INTO sqlite_sequence VALUES('group',5);
+-INSERT INTO sqlite_sequence VALUES('domainlist',18);
++INSERT INTO sqlite_sequence VALUES('domainlist',19);
+ INSERT INTO sqlite_sequence VALUES('adlist',2);
+ INSERT INTO sqlite_sequence VALUES('client',5);
+ CREATE VIEW vw_allowlist AS SELECT domain, domainlist.id AS id, domainlist_by_group.group_id AS group_id
+tree: changes (- before, + after)
+--- before.tree
++++ after.tree
+@@ -2,6 +2,6 @@
+ /etc/dnsmasq.d/04-pihole-static-dhcp.conf f0f051052433432b
+ /etc/dnsmasq.d/05-pihole-custom-cname.conf dd743f441f7598d7
+ /etc/pihole/dhcp.leases c856cd63dbef0651
+-/etc/pihole/gravity.db sqlite-dump 997cb9c7cd6a1a70
++/etc/pihole/gravity.db sqlite-dump b89649e6162a8fd1
+ /etc/pihole/pihole-FTL.db sqlite-dump 0ea5cb9bdb992ecc
+ /etc/pihole/pihole.toml e74fe178e711bf98
+## stderr

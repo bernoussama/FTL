@@ -1,0 +1,91 @@
+# regex-test CLI (phase 5). Exit codes are the spec: 0 match, 1 invalid regex or
+# usage error, 2 no match. Approximate matching, back references, (?#) comments
+# and the error texts come from TRE, which stays in C. Two-argument cases do not
+# read the database; one-argument (database mode) cases run gravity.sh first.
+# rt.sh normalizes the timing lines and removes /etc/pihole when it finishes.
+
+# Pattern classes (domain, regex)
+match-literal            | ./regex/rt.sh regex-test 'a' 'a'
+match-anchored           | ./regex/rt.sh regex-test 'aa' '^[a-z]{1,3}$'
+nomatch-anchored         | ./regex/rt.sh regex-test 'aaaa' '^[a-z]{1,3}$'
+match-comment            | ./regex/rt.sh regex-test 'aa' '^a(?#some comment)a$'
+match-backref            | ./regex/rt.sh regex-test 'abc.abc' '([a-z]*)\.\1'
+match-backref-count      | ./regex/rt.sh regex-test 'aabc' '(a)\1{1,2}'
+match-backref-end        | ./regex/rt.sh regex-test 'foo' '(.)\1$'
+nomatch-backref-end      | ./regex/rt.sh regex-test 'foox' '(.)\1$'
+nomatch-backref-digits   | ./regex/rt.sh regex-test '12345' '([0-9]{5})\1'
+match-backref-complex    | ./regex/rt.sh regex-test 'cat.foo.dog---cat%dog!foo' '(cat)\.(foo)\.(dog)---\1%\3!\2'
+match-charset            | ./regex/rt.sh regex-test '__abc#LMN012$x%yz789*' '[[:digit:]a-z#$%]+'
+match-range              | ./regex/rt.sh regex-test '!ABC-./XYZ~' '[--Z]+'
+match-icase              | ./regex/rt.sh regex-test 'FBCDN.NET' 'f'
+match-empty-regex        | ./regex/rt.sh regex-test 'fbcdn.net' ''
+
+# Approximate matching (TRE {~n}, {+i -d #s ~n})
+approx-0-errors          | ./regex/rt.sh regex-test 'foobarzap' 'foo(bar){~1}zap'
+approx-1-inside          | ./regex/rt.sh regex-test 'foobrzap' 'foo(bar){~1}zap'
+nomatch-approx-outside   | ./regex/rt.sh regex-test 'foxbrazap' 'foo(bar){~1}zap'
+approx-global-0          | ./regex/rt.sh regex-test 'foobar' '^(foobar){~1}$'
+nomatch-approx-global-2  | ./regex/rt.sh regex-test 'ccfoobar' '^(foobar){~1}$'
+approx-subst-insert      | ./regex/rt.sh regex-test 'oobargoobaploowap' '(foobar){+2#2~2}'
+approx-insert-delete     | ./regex/rt.sh regex-test '3oifaowefbaoraofuiebofasebfaobfaorfeoaro' '(foobar){+1 -2}'
+nomatch-approx-short     | ./regex/rt.sh regex-test '3oifaowefbaoraofuiebofasebfaobfaorfeoaro' '(foobar){+1 -1}'
+
+# Useful hints for invalid regular expressions (exit 1, message on line 2)
+invalid-brace-contents   | ./regex/rt.sh regex-test 'fbcdn.net' 'f{x}'
+invalid-repetition       | ./regex/rt.sh regex-test 'fbcdn.net' 'a**'
+invalid-trailing-slash   | ./regex/rt.sh regex-test 'fbcdn.net' 'x\'
+invalid-missing-bracket  | ./regex/rt.sh regex-test 'fbcdn.net' '['
+invalid-missing-paren    | ./regex/rt.sh regex-test 'fbcdn.net' '('
+invalid-missing-brace    | ./regex/rt.sh regex-test 'fbcdn.net' '{1'
+invalid-collating        | ./regex/rt.sh regex-test 'fbcdn.net' '[[.foo.]]'
+invalid-class-name       | ./regex/rt.sh regex-test 'fbcdn.net' '[[:foobar:]]'
+invalid-backref          | ./regex/rt.sh regex-test 'fbcdn.net' '(a)\2'
+invalid-range            | ./regex/rt.sh regex-test 'fbcdn.net' '[g-1]'
+
+# Quiet mode: -q prints nothing on match or no match, the message on invalid
+quiet-match              | ./regex/rt.sh -q regex-test 'fbcdn.net' 'f'
+quiet-nomatch            | ./regex/rt.sh -q regex-test 'fbcdn.net' 'g'
+quiet-invalid            | ./regex/rt.sh -q regex-test 'fbcdn.net' 'g{x}'
+quiet-invert-match       | ./regex/rt.sh -q regex-test 'f' 'g;invert'
+quiet-invert-nomatch     | ./regex/rt.sh -q regex-test 'g' 'g;invert'
+
+# ;querytype=... (the CLI has no DNS query, so the type filter is not applied)
+querytype-a-reported     | ./regex/rt.sh regex-test 'f' 'f;querytype=A'
+querytype-not-txt        | ./regex/rt.sh regex-test 'f' 'f;querytype=!TXT'
+querytype-list-reported  | ./regex/rt.sh regex-test 'f' 'f;querytype=A,HTTPS'
+querytype-not-applied    | ./regex/rt.sh regex-test 'f' 'f;querytype=TXT'
+querytype-unknown-token  | ./regex/rt.sh regex-test 'f' 'f;querytype=A,BOGUS'
+querytype-unknown        | ./regex/rt.sh regex-test 'f' 'f;querytype=FOO'
+querytype-empty          | ./regex/rt.sh regex-test 'f' 'f;querytype='
+querytype-duplicate      | ./regex/rt.sh regex-test 'f' 'f;querytype=!A;querytype=A'
+
+# ;reply=... (only the hint is printed here, the reply itself is a DNS behaviour)
+reply-nxdomain-reported  | ./regex/rt.sh regex-test 'f' 'f;reply=NXDOMAIN'
+reply-ip-reported        | ./regex/rt.sh regex-test 'f' 'f;reply=1.2.3.4;reply=fe80::1234'
+reply-cname-target       | ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply=CNAME,example.com'
+reply-cname-missing      | ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply=CNAME'
+reply-unknown            | ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply=BOGUS'
+reply-bad-ip             | ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply=1.2.3'
+reply-empty              | ./regex/rt.sh regex-test 'fbcdn.net' 'f;reply='
+reply-last-wins          | ./regex/rt.sh regex-test 'f' 'f;reply=REFUSED;reply=NODATA'
+
+# ;invert and unknown or empty options
+invert-reported          | ./regex/rt.sh regex-test 'fbcdn.net' 'g;invert'
+invert-case              | ./regex/rt.sh regex-test 'fbcdn.net' 'g;INVERT'
+ext-unknown-option       | ./regex/rt.sh regex-test 'f' 'f;foo'
+ext-empty-option         | ./regex/rt.sh regex-test 'f' 'f;'
+
+# Usage errors (exit 1)
+args-none                | ./regex/rt.sh regex-test
+args-three               | ./regex/rt.sh regex-test 'a' 'b' 'c'
+
+# Database mode: regex rows from gravity.db (gravity.sh base is the suite's file)
+db-deny-match            | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex7.ftl'
+db-allow-match           | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex2'
+db-nomatch               | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'example.com'
+db-reply-hint            | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex-NXDOMAIN'
+db-querytype-hint        | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex-A'
+db-multiple-options      | ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex-multiple.ftl'
+db-empty-row-skipped     | ./regex/gravity.sh empty-row; ./regex/rt.sh regex-test 'anything.example'
+db-invalid-row           | ./regex/gravity.sh bad-row; ./regex/rt.sh regex-test 'anything.example'
+db-missing-gravity       | ./regex/gravity.sh missing; ./regex/rt.sh regex-test 'f'

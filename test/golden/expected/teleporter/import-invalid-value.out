@@ -1,0 +1,9 @@
+## command: bash ./teleporter/import.sh invalid-value
+## exit: 1
+## stdout
+input line:   hostRecord = "pi.hole,127.0.0.1\nlog-queries"
+Teleporter: dns.hostRecord: contains newline characters
+Failed to read Teleporter ZIP file: File etc/pihole/pihole.toml in ZIP archive contains an invalid value
+Hint: dns.hostRecord: contains newline characters
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

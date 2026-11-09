@@ -1,0 +1,17 @@
+## command: ./database/bad.sh junk
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+database file unchanged
+<TIMESTAMP> [<PID>] ERROR: SQLite3: file is not a database in "SELECT VALUE FROM ftl WHERE id = 0;" (26)
+<TIMESTAMP> [<PID>] ERROR: Encountered prepare error in db_query_int("SELECT VALUE FROM ftl WHERE id = 0;"): file is not a database
+<TIMESTAMP> [<PID>] WARNING: Database not available, please ensure the database is unlocked when starting pihole-FTL !
+<TIMESTAMP> [<PID>] ERROR: init_memory_database(queries_to_disk) - SQL error step: SQL logic error
+<TIMESTAMP> [<PID>] CRIT: Cannot initialize in-memory database.
+<TIMESTAMP> [<PID>] INFO: Terminating database thread
+<TIMESTAMP> [<PID>] ERROR: Final database update failed
+<TIMESTAMP> [<PID>] WARNING: Failed to open database in backup_db_sessions()
+<TIMESTAMP> [<PID>] ERROR: SQLite3: statement aborts at 4: no such database: disk; [DETACH ?] (1)
+<TIMESTAMP> [<PID>] ERROR: detach_database(): Failed to detach database: SQL logic error
+<TIMESTAMP> [<PID>] ERROR: close_memory_database(): Failed to detach disk database
+## stderr

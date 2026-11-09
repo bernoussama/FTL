@@ -1,0 +1,5 @@
+## command: ./database/sqliterc.sh sqlite3 :memory: "SELECT 1 AS one"
+## exit: 0
+## stdout
+1
+## stderr

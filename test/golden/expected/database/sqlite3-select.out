@@ -1,0 +1,5 @@
+## command: ./database/ftl.sh sqlite3 :memory: "SELECT 1 + 1"
+## exit: 0
+## stdout
+2
+## stderr

@@ -1,0 +1,7 @@
+## command: bash ./teleporter/import.sh at-limit
+## exit: 1
+## stdout
+Failed to read Teleporter ZIP file: Failed to parse received ZIP archive
+Hint: failed finding central directory
+tree: no file in /etc/pihole or /etc/dnsmasq.d changed
+## stderr

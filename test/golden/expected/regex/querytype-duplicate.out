@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;querytype=!A;querytype=A'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "f;querytype=!A;querytype=A": Overwriting previous querytype setting (multiple "querytype=..." found)
+## stderr

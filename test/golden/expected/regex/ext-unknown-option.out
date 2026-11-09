@@ -1,0 +1,6 @@
+## command: ./regex/rt.sh regex-test 'f' 'f;foo'
+## exit: 1
+## stdout
+[i] Compiling regex filter...
+Invalid regex CLI filter "f;foo": Invalid regex option "foo"
+## stderr

@@ -1,0 +1,27 @@
+## command: ./database/migrate.sh suite log
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+<TIMESTAMP> [<PID>] INFO: Database version is 9
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 10
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 11
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 12
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 13
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 14
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 15
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 16
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 17
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 18
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 19
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 20
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 21
+<TIMESTAMP> [<PID>] INFO: Updating long-term database to version 22
+<TIMESTAMP> [<PID>] INFO: Database successfully initialized
+<TIMESTAMP> [<PID>] INFO: Restored 0 API sessions from the database
+<TIMESTAMP> [<PID>] INFO: Imported 0 queries from the on-disk database (it has 0 rows)
+<TIMESTAMP> [<PID>] INFO: Parsing queries in database
+<TIMESTAMP> [<PID>] INFO: Imported 0 queries from the long-term database
+<TIMESTAMP> [<PID>] INFO: Terminating database thread
+<TIMESTAMP> [<PID>] INFO: Finished final database update
+<TIMESTAMP> [<PID>] INFO: Stored 0 API sessions in the database
+## stderr

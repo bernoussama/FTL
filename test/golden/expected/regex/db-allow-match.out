@@ -1,0 +1,12 @@
+## command: ./regex/gravity.sh base; ./regex/rt.sh regex-test 'regex2'
+## exit: 0
+## stdout
+[i] Loading regex filters from database...
+    Compiled 11 deny and 2 allow regex in <MSEC>
+
+[i] Checking domain against deny regex...
+    Time: <MSEC>
+[i] Checking domain against allow regex...
+    regex2 matches (regex whitelist, DB ID 3)
+    Time: <MSEC>
+## stderr

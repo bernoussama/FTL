@@ -1,0 +1,11 @@
+## command: bash ./teleporter/export.sh verbatim
+## exit: 0
+## stdout
+export exit: 0
+etc/pihole/pihole.toml: identical to /etc/pihole/pihole.toml (342 bytes)
+etc/pihole/dhcp.leases: identical to /etc/pihole/dhcp.leases (68 bytes)
+etc/dnsmasq.d/01-pihole.conf: identical to /etc/dnsmasq.d/01-pihole.conf (109 bytes)
+etc/dnsmasq.d/04-pihole-static-dhcp.conf: identical to /etc/dnsmasq.d/04-pihole-static-dhcp.conf (46 bytes)
+etc/dnsmasq.d/05-pihole-custom-cname.conf: identical to /etc/dnsmasq.d/05-pihole-custom-cname.conf (44 bytes)
+etc/hosts: identical to /etc/hosts (<size> bytes)
+## stderr

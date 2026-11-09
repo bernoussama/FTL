@@ -1,0 +1,10 @@
+## command: ./regex/rt.sh regex-test 'oobargoobaploowap' '(foobar){+2#2~2}'
+## exit: 0
+## stdout
+[i] Compiling regex filter...
+    Compiled regex filter in <MSEC>
+
+Checking domain "oobargoobaploowap"...
+    (foobar){+2#2~2} matches
+   Time: <MSEC>
+## stderr

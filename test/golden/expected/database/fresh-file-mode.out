@@ -1,0 +1,6 @@
+## command: ./database/fresh.sh mode
+## exit: 0
+## stdout
+pihole-FTL exit code after SIGTERM: 0
+640
+## stderr

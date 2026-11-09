@@ -1,0 +1,6 @@
+## command: ./database/ftl.sh sqlite3 :memory: .version
+## exit: 0
+## stdout
+SQLite <VERSION>
+<COMPILER>
+## stderr

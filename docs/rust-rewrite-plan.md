@@ -30,7 +30,7 @@ Every module goes through the same loop:
 ## Phase 0: make the tests usable as a spec (no Rust)
 
 - [x] `test/run.sh` accepts `FTL_BIN` and runs locally in `ghcr.io/pi-hole/ftl-build:v2.19` through `test/docker-test.sh` (see `docs/testing.md`).
-- [ ] Per-module harnesses that set up their own fixtures (tags alone don't create state). Reuse what's already isolated: the CLI tests, the C harnesses, the teleporter restart. Done for the CLI modules (sha256, idn2, `--complete`, gzip) through `test/golden/record.sh`.
+- [x] Per-module harnesses that set up their own fixtures (tags alone don't create state). Reuse what's already isolated: the CLI tests, the C harnesses, the teleporter restart. Done through `test/golden/record.sh` for sha256, idn2, `--complete` and gzip (Phase 2/3 CLI modules), teleporter (37 cases), config (40), regex (68) and database (38). Cases that need `/etc/pihole` reset it themselves and refuse to run outside docker. Filtering (Phase 7) and the HTTP API (Phase 8) rely on the running-FTL suites.
 - [x] Tag each bats test with `test_tags`: `contract`, `log-contract` or `c-impl`.
 - [x] Fix the real test defects:
   - `test_suite.bats:654`: the negative check queried `umbrella.ftl` after testing `nxdomain.ede15.ftl`. Fixed.
@@ -51,13 +51,19 @@ Every module goes through the same loop:
   - Rust needs `-lgcc_s -lc` (`native-static-libs`). FTL already links `-static -static-libgcc`, so no extra link flags were needed.
   - Binary size: amd64 grows by about 312 KB (29,093,689 → 29,413,593 bytes) for an almost empty library, mostly Rust std. Track this per module.
   - Under emulation a full build takes 1–1.5 h per target (arm64: 4,869 s), dominated by the SQLite amalgamation. CI should keep native or cross runners for the per-change builds.
-  - For CI, the toolchain still has to go into the `ftl-build` image, ideally at a pinned version.
-- Write down the boundary rules above. Add ABI checks: `static_assert` struct sizes and offsets in C, plus matching Rust tests, for every type that crosses the boundary.
-- Panic policy, `*_free` functions, and the after-fork hook, tested with a fork stress test.
-- CI approach:
+  - The toolchain is pinned in a local image built on top of `ftl-build:v2.19` (`test/docker/Dockerfile.rust`, `rust~1.91`, i.e. 1.91.x). `RUST=1` builds use it.
+- [x] Write down the boundary rules above. Add ABI checks: `static_assert` struct sizes and offsets in C, plus matching Rust tests, for every type that crosses the boundary.
+  - The rules are in `rust/README.md`. The first boundary type is `ftl_rs_buf` (`src/ftl_rs.h`, `rust/src/buf.rs`). Its layout is checked three ways: `_Static_assert` in C, `size_of`/`offset_of!` tests in Rust, and at runtime by `pihole-FTL rust-version`, which fails naming the field that differs. ABI version 2.
+- [x] Panic policy, `*_free` functions, and the after-fork hook, tested with a fork stress test.
+  - Panics: `panic = "abort"`, no `catch_unwind`. A panic prints its message and the process dies from SIGABRT (exit 134). FTL's crash handler does not cover SIGABRT, so there is no FTL backtrace (`pihole-FTL rust-panic-test`).
+  - `ftl_rs_buf_free()` is NULL-safe and resets the buffer, so a double free is a no-op.
+  - `ftl_rs_after_fork()` is called in `FTL_TCP_worker_created()` and replaces the process-local state, leaking the old one on purpose. `pihole-FTL rust-fork-test 200` forks children while a second thread keeps the Rust lock busy: 200/200 pass with the hook. Without it, 75/200 passed and 49 hung. The stress test calls the hook itself; the real TCP worker path is covered only by the full suite.
+  - Three `c-impl` bats tests cover these and skip on a build without Rust.
+- CI approach (local for now, see open decision 2):
   - On each change: native amd64 runs of the C build and the Rust build, plus builds on all architectures.
   - On a schedule: the full suite on all architectures for both builds, plus the C-vs-Rust comparison runs.
   - No combinations of individual per-module switches. At most two builds exist: "all C" and "C with the Rust modules in transition".
+- [x] Local CI: `test/ci-local.sh` runs the per-change checks (C and Rust builds, full suite on both, goldens on both, `cargo test`); `--arch`/`--all-arch` add the other platforms.
 - **Done when** CI is green everywhere with the empty library, the static-linking checks (`test_suite.bats:1264`, `:1286`) pass, and the fork stress test passes.
 
 ## Phases 2 to 10: modules, ordered by risk and dependencies
@@ -88,6 +94,6 @@ Every module goes through the same loop:
 
 ## Open decisions
 
-1. Rewrite tests that check C-specific output (civetweb option dump `:2411`, mbedTLS X.509 fields, backtrace symbols `:795`–`:828`, dnsmasq Features line `:61`) to check behaviour instead. Recommended: yes.
-2. Whether this is meant to be merged into pi-hole/FTL. If so, raise it with the maintainers before Phase 1, because it adds a Rust toolchain to every CI architecture.
+1. Rewrite tests that check C-specific output (civetweb option dump `:2461`, mbedTLS X.509 fields, backtrace symbols `:795`–`:828`, dnsmasq Features line `:61`) to check behaviour instead. Recommended: yes.
+2. ~~Whether this is meant to be merged into pi-hole/FTL.~~ Decided (2026-11-08): no upstreaming for now. The work stays on the fork's local `rust-rewrite` branch, so "CI" below means the local docker scripts (`test/ci-local.sh`), not GitHub Actions. Revisit before proposing anything upstream.
 3. Whether porting the TRE regex engine is ever worth doing, or whether it stays in C permanently.

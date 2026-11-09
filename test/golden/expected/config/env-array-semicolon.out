@@ -1,0 +1,5 @@
+## command: ./config/setup.sh template && FTLCONF_dns_upstreams='1.1.1.1;8.8.8.8' ./config/ftl.sh --config dns.upstreams
+## exit: 0
+## stdout
+[ 1.1.1.1, 8.8.8.8 ]
+## stderr

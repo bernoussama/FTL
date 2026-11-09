@@ -1,0 +1,6 @@
+## command: ./config/setup.sh readonly && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 1
+## stdout
+Config is in read-only mode, changes are not allowed (misc.readOnly = true)
+no difference
+## stderr

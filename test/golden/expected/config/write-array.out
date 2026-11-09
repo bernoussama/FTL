@@ -1,0 +1,30 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams '["1.1.1.1","8.8.8.8"]'; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 0
+## stdout
+[ 1.1.1.1, 8.8.8.8 ]
+Wrote config file:
+ - 167 total entries
+ - 111 entries are default
+ - 56 entries are modified
+ - 3 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+@@ -1,7 +1,7 @@
+ # Pi-hole configuration file (<VERSION>)
+ # Encoding: UTF-8
+ # This file is managed by pihole-FTL
+-# Last updated on <TIMESTAMP>
++# Last updated on <TIMESTAMP>
+ 
+ [dns]
+   # Upstream DNS Servers to be used by Pi-hole. If this is not set, Pi-hole will not
+@@ -12,7 +12,8 @@
+   # Allowed values are:
+   #     Array of IP addresses and/or hostnames, optionally with a port (#...)
+   upstreams = [
+-    "127.0.0.1#5555"
++    "1.1.1.1",
++    "8.8.8.8"
+   ] ### CHANGED, default = []
+ 
+   # Use this option to control deep CNAME inspection. Disabling it might be beneficial
+## stderr

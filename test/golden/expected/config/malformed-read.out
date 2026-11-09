@@ -1,0 +1,7 @@
+## command: ./config/setup.sh malformed && ./config/ftl.sh --config dns.port
+## exit: 0
+## stdout
+53
+## stderr
+Warning: /etc/pihole/pihole.toml could not be parsed.
+         The value shown below may not reflect the current configuration.

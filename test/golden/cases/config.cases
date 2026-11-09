@@ -1,0 +1,44 @@
+# Config: pihole.toml, the --config CLI and the FTLCONF_ environment variables.
+# Phase 4 module. Each case starts from its own /etc/pihole (setup.sh). A case
+# exits with the code of the binary: show.sh runs after it and then the case
+# exits with the saved code.
+read-bool | ./config/setup.sh template && ./config/ftl.sh --config debug.config
+read-uint16 | ./config/setup.sh template && ./config/ftl.sh --config dns.port
+read-array | ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams
+read-subtree | ./config/setup.sh template && ./config/ftl.sh --config webserver.api
+read-full-tree | ./config/setup.sh template && ./config/ftl.sh --config
+read-quiet | ./config/setup.sh template && ./config/ftl.sh --config -q dns.port
+read-unknown-key | ./config/setup.sh template && ./config/ftl.sh --config dbg.all
+read-secret-masked | ./config/setup.sh template && ./config/ftl.sh --config webserver.api.password
+read-missing-file | ./config/setup.sh nofile && ./config/ftl.sh --config dns.port
+read-setupvars-no-migrate | ./config/setup.sh setupvars && ./config/ftl.sh --config dns.upstreams; rc=$?; ./config/show.sh state; exit $rc
+write-bool | ./config/setup.sh template && ./config/ftl.sh --config debug.config false; rc=$?; ./config/show.sh diff; exit $rc
+write-uint16 | ./config/setup.sh template && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+write-array | ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams '["1.1.1.1","8.8.8.8"]'; rc=$?; ./config/show.sh diff; exit $rc
+write-array-bad-json | ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams '[1.1.1.1'; rc=$?; ./config/show.sh diff; exit $rc
+write-filepath-empty | ./config/setup.sh template && ./config/ftl.sh --config files.database ''; rc=$?; ./config/show.sh diff; exit $rc
+write-hosts-invalid | ./config/setup.sh template && ./config/ftl.sh --config dns.hosts '["bad.example"]'; rc=$?; ./config/show.sh diff; exit $rc
+write-totp-invalid | ./config/setup.sh template && ./config/ftl.sh --config webserver.api.totp_secret 'JBSW1Y3P'; rc=$?; ./config/show.sh diff; exit $rc
+write-password | ./config/setup.sh template && ./config/ftl.sh --config webserver.api.password 'secret'; rc=$?; ./config/show.sh diff; exit $rc
+write-unchanged | ./config/setup.sh template && ./config/ftl.sh --config dns.port 53; rc=$?; ./config/show.sh state; ./config/show.sh diff; exit $rc
+write-unknown-key | ./config/setup.sh template && ./config/ftl.sh --config dbg.all true; rc=$?; ./config/show.sh diff; exit $rc
+write-readonly-cli | ./config/setup.sh template && ./config/ftl.sh --config misc.readOnly true; rc=$?; ./config/show.sh diff; exit $rc
+write-readonly-mode | ./config/setup.sh readonly && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+write-missing-file | ./config/setup.sh nofile && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh state; ./config/show.sh grep '^  port = '; exit $rc
+test-mode | ./config/setup.sh template && ./config/ftl.sh --config -t dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+env-overrides-toml | ./config/setup.sh template && FTLCONF_dns_port=5353 ./config/ftl.sh --config dns.port
+env-case-insensitive-unknown | ./config/setup.sh template && FTLCONF_DNS_PORT=5353 FTLCONF_dns_nosuchkey=1 ./config/ftl.sh --config dns.port
+env-forced-write-refused | ./config/setup.sh template && FTLCONF_dns_port=5353 ./config/ftl.sh --config dns.port 5400; rc=$?; ./config/show.sh diff; exit $rc
+env-forced-persist | ./config/setup.sh template && FTLCONF_misc_nice=-5 ./config/ftl.sh --config dns.piholePTR HOSTNAME; rc=$?; ./config/show.sh diff; exit $rc
+env-invalid-type-locks | ./config/setup.sh template && FTLCONF_dns_port=abc ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+env-invalid-validator-no-lock | ./config/setup.sh template && FTLCONF_files_pcap=$'\001x' ./config/ftl.sh --config files.pcap /var/log/x.pcap; rc=$?; ./config/show.sh diff; exit $rc
+env-array-semicolon | ./config/setup.sh template && FTLCONF_dns_upstreams='1.1.1.1;8.8.8.8' ./config/ftl.sh --config dns.upstreams
+template-canonical-suite-env | ./config/setup.sh template && ./config/ftl.sh --config dns.port 5353 && ./config/ftl.sh --config dns.port 53 && ./config/show.sh body
+malformed-read | ./config/setup.sh malformed && ./config/ftl.sh --config dns.port
+malformed-backup-read | ./config/setup.sh malformed-backup && ./config/ftl.sh --config dns.port
+malformed-write | ./config/setup.sh malformed && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh state; exit $rc
+unknown-keys-write | ./config/setup.sh unknown-keys && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh grep 'bogusKey|^\[bogus\]'; exit $rc
+wrong-type-read | ./config/setup.sh wrong-type && ./config/ftl.sh --config dns.port
+migrate-v6 | ./config/setup.sh setupvars && ./config/ftl.sh migrate v6; rc=$?; ./config/show.sh state; exit $rc
+rotation-three-writes | ./config/setup.sh template && for v in 5001 5002 5003; do ./config/ftl.sh --config dns.port $v >/dev/null || exit 1; done; ./config/show.sh backups
+rotation-limit-15 | ./config/setup.sh template && for i in $(seq 1 17); do ./config/ftl.sh --config dns.port $((5000 + i)) >/dev/null || exit 1; done; ./config/show.sh backups

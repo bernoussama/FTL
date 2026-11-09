@@ -1,0 +1,5 @@
+## command: ./config/setup.sh template && FTLCONF_DNS_PORT=5353 FTLCONF_dns_nosuchkey=1 ./config/ftl.sh --config dns.port
+## exit: 0
+## stdout
+5353
+## stderr

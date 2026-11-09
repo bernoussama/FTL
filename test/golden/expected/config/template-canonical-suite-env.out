@@ -1,0 +1,19 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.port 5353 && ./config/ftl.sh --config dns.port 53 && ./config/show.sh body
+## exit: 0
+## stdout
+5353
+Wrote config file:
+ - 167 total entries
+ - 110 entries are default
+ - 57 entries are modified
+ - 3 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+53
+Wrote config file:
+ - 167 total entries
+ - 111 entries are default
+ - 56 entries are modified
+ - 3 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+identical from line 6
+## stderr

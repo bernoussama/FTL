@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config misc.readOnly true; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 1
+## stdout
+Config option misc.readOnly can only be set in pihole.toml, not via the CLI
+no difference
+## stderr

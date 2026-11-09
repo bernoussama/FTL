@@ -1,0 +1,34 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config debug.config false; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 0
+## stdout
+false
+@@ -1,7 +1,7 @@
+ # Pi-hole configuration file (<VERSION>)
+ # Encoding: UTF-8
+ # This file is managed by pihole-FTL
+-# Last updated on <TIMESTAMP>
++# Last updated on <TIMESTAMP>
+ 
+ [dns]
+   # Upstream DNS Servers to be used by Pi-hole. If this is not set, Pi-hole will not
+@@ -1710,7 +1710,7 @@
+   #
+   # Allowed values are:
+   #     true or false
+-  config = true ### CHANGED, default = false
++  config = false
+ 
+   # Debug monitoring of /etc/pihole filesystem events
+   #
+@@ -1771,8 +1771,8 @@
+   all = true ### CHANGED, default = false
+ 
+ # Configuration statistics:
+-# 167 total entries out of which 111 entries are default
+-# --> 56 entries are modified
++# 167 total entries out of which 112 entries are default
++# --> 55 entries are modified
+ # 3 entries are forced through environment:
+ #   - misc.nice
+ #   - misc.check.shmem
+## stderr

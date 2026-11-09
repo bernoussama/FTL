@@ -1,0 +1,9 @@
+## command: ./config/setup.sh setupvars && ./config/ftl.sh --config dns.upstreams; rc=$?; ./config/show.sh state; exit $rc
+## exit: 0
+## stdout
+[]
+/etc/pihole:
+config_backups
+setupVars.conf
+config_backups: 0 entries
+## stderr

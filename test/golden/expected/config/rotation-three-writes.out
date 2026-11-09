@@ -1,0 +1,20 @@
+## command: ./config/setup.sh template && for v in 5001 5002 5003; do ./config/ftl.sh --config dns.port $v >/dev/null || exit 1; done; ./config/show.sh backups
+## exit: 0
+## stdout
+pihole.toml.1: port = 5002 ### CHANGED, default = 53
+pihole.toml.2: port = 5001 ### CHANGED, default = 53
+pihole.toml.3: port = 53
+pihole.toml.4: missing
+pihole.toml.5: missing
+pihole.toml.6: missing
+pihole.toml.7: missing
+pihole.toml.8: missing
+pihole.toml.9: missing
+pihole.toml.10: missing
+pihole.toml.11: missing
+pihole.toml.12: missing
+pihole.toml.13: missing
+pihole.toml.14: missing
+pihole.toml.15: missing
+pihole.toml.16: missing
+## stderr

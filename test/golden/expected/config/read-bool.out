@@ -1,0 +1,5 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config debug.config
+## exit: 0
+## stdout
+true
+## stderr

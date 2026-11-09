@@ -1,0 +1,5 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.port
+## exit: 0
+## stdout
+53
+## stderr

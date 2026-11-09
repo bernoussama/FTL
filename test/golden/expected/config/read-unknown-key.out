@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dbg.all
+## exit: 4
+## stdout
+Unknown config option dbg.all, did you mean:
+ - debug.all
+## stderr

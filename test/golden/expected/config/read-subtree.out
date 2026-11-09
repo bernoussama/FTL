@@ -1,0 +1,20 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config webserver.api
+## exit: 0
+## stdout
+webserver.api.max_sessions = 16
+webserver.api.prettyJSON = false
+webserver.api.pwhash = 
+webserver.api.password = ********
+webserver.api.totp_secret = 
+webserver.api.app_pwhash = 
+webserver.api.app_sudo = false
+webserver.api.cli_pw = true
+webserver.api.excludeClients = [ ^1\\.2\\.3\\.4$ ]
+webserver.api.excludeDomains = []
+webserver.api.maxHistory = 86400
+webserver.api.maxClients = 10
+webserver.api.client_history_global_max = true
+webserver.api.allow_destructive = true
+webserver.api.temp.limit = 60.000000
+webserver.api.temp.unit = C
+## stderr

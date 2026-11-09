@@ -1,0 +1,10 @@
+## command: ./config/setup.sh malformed && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh state; exit $rc
+## exit: 0
+## stdout
+5353
+/etc/pihole:
+config_backups
+dnsmasq.conf
+pihole.toml
+config_backups: 1 entries
+## stderr

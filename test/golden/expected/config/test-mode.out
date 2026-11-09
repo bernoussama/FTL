@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config -t dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 0
+## stdout
+5353
+no difference
+## stderr

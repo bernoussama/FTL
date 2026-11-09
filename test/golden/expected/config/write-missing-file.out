@@ -1,0 +1,12 @@
+## command: ./config/setup.sh nofile && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh state; ./config/show.sh grep '^  port = '; exit $rc
+## exit: 0
+## stdout
+5353
+/etc/pihole:
+config_backups
+dnsmasq.conf
+pihole.toml
+config_backups: 0 entries
+230:  port = 5353 ### CHANGED, default = 53
+930:  port = "80o,443os,[::]:80o,[::]:443os"
+## stderr

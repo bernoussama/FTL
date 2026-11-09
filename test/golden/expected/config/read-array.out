@@ -1,0 +1,5 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams
+## exit: 0
+## stdout
+[ 127.0.0.1#5555 ]
+## stderr

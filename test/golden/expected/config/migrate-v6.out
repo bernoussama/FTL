@@ -1,0 +1,51 @@
+## command: ./config/setup.sh setupvars && ./config/ftl.sh migrate v6; rc=$?; ./config/show.sh state; exit $rc
+## exit: 0
+## stdout
+Migrating config to Pi-hole v6.0 format
+No readable FTL config file found, using default settings
+No legacy config file found, using defaults
+Migrating config from /etc/pihole/setupVars.conf
+setupVars.conf:WEBPASSWORD -> Not set
+setupVars.conf:BLOCKING_ENABLED -> Not set
+setupVars.conf:TEMPERATURE_LIMIT -> Not set
+setupVars.conf:TEMPERATURE_UNIT -> Not set
+setupVars.conf:WEBUIBOXEDLAYOUT -> Not set
+setupVars.conf:WEBTHEME -> Not set
+setupVars.conf:PIHOLE_DNS_1 -> Setting dns.upstreams[<PID>] = 1.1.1.1
+setupVars.conf:PIHOLE_DNS_2 -> Setting dns.upstreams[<PID>] = 8.8.8.8
+setupVars.conf:PIHOLE_DOMAIN -> Not set
+setupVars.conf:DNS_FQDN_REQUIRED -> Not set
+setupVars.conf:DNS_FQDN_REQUIRED -> Not set
+setupVars.conf:DNS_BOGUS_PRIV -> Not set
+setupVars.conf:DNSSEC -> Not set
+setupVars.conf:PIHOLE_INTERFACE -> Not set
+setupVars.conf:HOSTRECORD -> Not set
+setupVars.conf:DNSMASQ_LISTENING -> Setting dns.listeningMode to ALL
+setupVars.conf:REV_SERVER -> Not set
+setupVars.conf:DHCP_ACTIVE -> Not set
+setupVars.conf:DHCP_START -> Not set
+setupVars.conf:DHCP_END -> Not set
+setupVars.conf:DHCP_ROUTER -> Not set
+setupVars.conf:DHCP_LEASETIME -> Not set
+setupVars.conf:DHCP_IPv6 -> Not set
+setupVars.conf:DHCP_rapid_commit -> Not set
+setupVars.conf:QUERY_LOGGING -> Not set
+setupVars.conf:GRAVITY_TMPDIR -> Not set
+setupVars.conf:WEB_PORTS -> Not set
+Moved /etc/pihole/setupVars.conf to /etc/pihole/migration_backup_v6/setupVars.conf
+setupVars.conf migration complete
+Config initialized with webserver ports 80 (HTTP) and 443 (HTTPS), IPv6 support is enabled
+Wrote config file:
+ - 167 total entries
+ - 165 entries are default
+ - 2 entries are modified
+ - 0 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+/etc/pihole:
+config_backups
+dnsmasq.conf
+hosts
+migration_backup_v6
+pihole.toml
+config_backups: 0 entries
+## stderr

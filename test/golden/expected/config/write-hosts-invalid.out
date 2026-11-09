@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.hosts '["bad.example"]'; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 3
+## stdout
+Invalid value: dns.hosts[<PID>]: neither a valid IPv4 nor IPv6 address ("bad.example")
+no difference
+## stderr

@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config webserver.api.totp_secret 'JBSW1Y3P'; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 3
+## stdout
+Invalid value: webserver.api.totp_secret: not a base32 string
+no difference
+## stderr

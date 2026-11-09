@@ -1,0 +1,40 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 0
+## stdout
+5353
+Wrote config file:
+ - 167 total entries
+ - 110 entries are default
+ - 57 entries are modified
+ - 3 entries are forced through environment
+Config file written to /etc/pihole/pihole.toml
+@@ -1,7 +1,7 @@
+ # Pi-hole configuration file (<VERSION>)
+ # Encoding: UTF-8
+ # This file is managed by pihole-FTL
+-# Last updated on <TIMESTAMP>
++# Last updated on <TIMESTAMP>
+ 
+ [dns]
+   # Upstream DNS Servers to be used by Pi-hole. If this is not set, Pi-hole will not
+@@ -235,7 +235,7 @@
+   #
+   # Allowed values are:
+   #     Any available valid (1 - 65535) port number
+-  port = 53
++  port = 5353 ### CHANGED, default = 53
+ 
+   # Enable/Disable the localise-queries option of dnsmasq. When this setting is disabled
+   # dnsmasq will return all possible values for local DNS Records. Enabled by default
+@@ -1771,8 +1771,8 @@
+   all = true ### CHANGED, default = false
+ 
+ # Configuration statistics:
+-# 167 total entries out of which 111 entries are default
+-# --> 56 entries are modified
++# 167 total entries out of which 110 entries are default
++# --> 57 entries are modified
+ # 3 entries are forced through environment:
+ #   - misc.nice
+ #   - misc.check.shmem
+## stderr

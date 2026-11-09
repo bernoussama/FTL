@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && FTLCONF_dns_port=abc ./config/ftl.sh --config dns.port 5353; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 5
+## stdout
+Config option dns.port is read-only (set via environmental variable)
+no difference
+## stderr

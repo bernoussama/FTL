@@ -1,0 +1,5 @@
+## command: ./config/setup.sh malformed-backup && ./config/ftl.sh --config dns.port
+## exit: 0
+## stdout
+5353
+## stderr

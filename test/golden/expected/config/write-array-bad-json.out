@@ -1,0 +1,6 @@
+## command: ./config/setup.sh template && ./config/ftl.sh --config dns.upstreams '[1.1.1.1'; rc=$?; ./config/show.sh diff; exit $rc
+## exit: 2
+## stdout
+Config setting dns.upstreams is invalid: not valid JSON, error at: .1.1
+no difference
+## stderr

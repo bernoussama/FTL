@@ -11,6 +11,7 @@ are the reference the Rust versions are compared against (Phase 0 of
 | `complete` | `pihole-FTL --complete` | 2 |
 | `gzip` | `pihole-FTL gzip` | 3 |
 | `teleporter` | `pihole-FTL --teleporter` (export), `pihole-FTL --teleporter FILE` (import) | 3 |
+| `config` | `pihole-FTL --config [-q\|-t] [key [value]]`, pihole.toml, `FTLCONF_` env vars, validators | 4 |
 | `regex` | `pihole-FTL regex-test [-q] str [rgx]` | 5 |
 | `database` | FTL start-up on a new, old or broken `pihole-FTL.db`, `pihole-FTL sqlite3`, `subnet_match`/`isIPv6`, `pihole-FTL gravity` | 6 |
 
@@ -70,6 +71,17 @@ refuse to run outside docker (no `/.dockerenv`), so record them only through
   installed before a corrupt gravity.db is refused). The v5 tar.gz import
   exists only in the API, so the CLI rejects it here and only
   `test/api/test_n_teleporter_validation.py` covers it.
+- `config`: the spec is the exit code and first message of each rejected
+  value or unknown key, the lines written to pihole.toml (values, `###
+  CHANGED` markers, env-forced entries, unknown keys dropped on write), the
+  backup rotation (`pihole.toml.1` is the state before the last write, at
+  most 15 files) and the env rules (`FTLCONF_` keys are case-insensitive, an
+  invalid type locks the key with exit 5, an invalid validator value does
+  not, arrays are `;`-separated). Not spec: the cJSON error position in the
+  bad-JSON message, the statistics lines after `Wrote config file` (printed
+  even when nothing changed) and the `migrate v6` log text. Not recorded:
+  `dns.hosts` writes reach `hosts/custom.list` one change late, and a write
+  with no /etc/pihole returns 0 with warnings.
 - `regex`: the exit codes of `regex-test` are the main spec: 0 for a match, 1
   for an invalid regex or a usage error, 2 for no match (including no matching
   database entry or a missing gravity.db). With `-q`, a match or no match

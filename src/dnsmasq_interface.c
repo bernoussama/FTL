@@ -58,6 +58,7 @@
 #include "procps.h"
 // init_api_sessions()
 #include "api/api.h"
+#include "ftl_rs.h"
 
 // Public prototypes (defined in this file, called from other translation units)
 void FTL_dump_cache_stats(void);
@@ -4130,6 +4131,11 @@ void FTL_TCP_worker_created(const int confd)
 	// lock-owner PID/TID inherited from the parent before we take any SHM
 	// lock, otherwise is_our_lock() would compare against the parent's IDs.
 	reset_lock_owner_cache();
+#ifdef HAVE_FTL_RS
+	// Replace the Rust per-process state inherited from the parent. A lock
+	// that another parent thread held at fork time would stay locked here
+	ftl_rs_after_fork();
+#endif
 
 	// Print this if debugging is enabled
 	if(config.debug.queries.v.b)

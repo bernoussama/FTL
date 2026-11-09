@@ -8,15 +8,19 @@
 // This file is copyright under the latest version of the EUPL.
 // Please see LICENSE file for your rights under this license.
 
-//! Phase 1 toolchain spike: an empty library that proves a Rust static
-//! library builds and links into the statically linked pihole-FTL on every
-//! CI architecture. The C side is declared in src/ftl_rs.h.
+//! Rust static library linked into the statically linked pihole-FTL. The C
+//! side is declared in src/ftl_rs.h. The rules every export follows
+//! (allocation, panics, locks, fork) are in rust/README.md.
+
+mod buf;
+mod fork;
+mod selftest;
 
 use std::ffi::c_char;
 
 /// Bumped whenever a function or type crossing the C/Rust boundary changes.
 /// The C side compares it with FTL_RS_ABI_VERSION from src/ftl_rs.h.
-pub const ABI_VERSION: u32 = 1;
+pub const ABI_VERSION: u32 = 2;
 
 /// ABI version this library was built with.
 ///

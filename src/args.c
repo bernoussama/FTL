@@ -692,8 +692,9 @@ void parse_args(int argc, char *argv[])
 	}
 
 	// Rust library check (not listed in help or completions): prints the
-	// version of the linked Rust library and fails if there is none or its
-	// ABI version differs from the one this binary was compiled against
+	// version of the linked Rust library and fails if there is none, if its
+	// ABI version differs from the one this binary was compiled against, or if
+	// ftl_rs_buf has a different layout on the Rust side
 	if(argc == 2 && strcmp(argv[1], "rust-version") == 0)
 	{
 		// Enable stdout printing
@@ -701,7 +702,62 @@ void parse_args(int argc, char *argv[])
 #ifdef HAVE_FTL_RS
 		const uint32_t abi = ftl_rs_abi_version();
 		printf("ftl-rs %s (ABI %u)\n", ftl_rs_version(), abi);
-		exit(abi == FTL_RS_ABI_VERSION ? EXIT_SUCCESS : EXIT_FAILURE);
+		bool ok = abi == FTL_RS_ABI_VERSION;
+		if(!ok)
+			printf("ABI mismatch: library %u, FTL %u\n", abi, FTL_RS_ABI_VERSION);
+
+		// Size of ftl_rs_buf, then the offsets of its ptr, len and cap fields
+		size_t rust[4] = { 0 };
+		ftl_rs_buf_layout(rust);
+		const size_t c[4] = { sizeof(ftl_rs_buf), offsetof(ftl_rs_buf, ptr),
+		                      offsetof(ftl_rs_buf, len), offsetof(ftl_rs_buf, cap) };
+		const char *field[4] = { "size", "ptr", "len", "cap" };
+		for(unsigned int i = 0; i < 4; i++)
+		{
+			if(rust[i] == c[i])
+				continue;
+			printf("ftl_rs_buf %s differs: Rust %zu, FTL %zu\n", field[i], rust[i], c[i]);
+			ok = false;
+		}
+		if(ok)
+			printf("ftl_rs_buf layout: OK\n");
+		exit(ok ? EXIT_SUCCESS : EXIT_FAILURE);
+#else
+		printf("FTL was built without the Rust library\n");
+		exit(EXIT_FAILURE);
+#endif
+	}
+
+	// Rust panic test (not listed in help or completions): the library panics,
+	// which must abort the process and leave the panic message on stderr
+	if(argc == 2 && strcmp(argv[1], "rust-panic-test") == 0)
+	{
+		// Enable stdout printing
+		cli_mode = true;
+#ifdef HAVE_FTL_RS
+		ftl_rs_selftest_panic();
+#else
+		printf("FTL was built without the Rust library\n");
+#endif
+		exit(EXIT_FAILURE);
+	}
+
+	// Rust fork test (not listed in help or completions): forks <N> children
+	// that use the Rust library after ftl_rs_after_fork(), see
+	// src/ftl_rs_selftest.c
+	if(argc == 3 && strcmp(argv[1], "rust-fork-test") == 0)
+	{
+		// Enable stdout printing
+		cli_mode = true;
+#ifdef HAVE_FTL_RS
+		char *end = NULL;
+		const unsigned long children = strtoul(argv[2], &end, 10);
+		if(argv[2][0] == '\0' || *end != '\0' || children == 0 || children > FTL_RS_FORK_TEST_MAX_CHILDREN)
+		{
+			printf("Usage: pihole-FTL rust-fork-test <children, 1 to %u>\n", FTL_RS_FORK_TEST_MAX_CHILDREN);
+			exit(EXIT_FAILURE);
+		}
+		exit(ftl_rs_fork_test((unsigned int)children));
 #else
 		printf("FTL was built without the Rust library\n");
 		exit(EXIT_FAILURE);

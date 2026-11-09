@@ -2353,6 +2353,40 @@ setup() {
   done
 }
 
+# Skips the calling test when pihole-FTL was built without the Rust library
+skip_without_rust() {
+  run ./pihole-FTL rust-version
+  if [[ "${output}" == *"FTL was built without the Rust library"* ]]; then
+    skip "built without the Rust library"
+  fi
+}
+
+# bats test_tags=c-impl
+@test "Rust library: rust-version passes the ABI and ftl_rs_buf layout checks" {
+  skip_without_rust
+  run ./pihole-FTL rust-version
+  assert_success
+  assert_line --regexp --index 0 '^ftl-rs [^ ]+ \(ABI [0-9]+\)$'
+  assert_line "ftl_rs_buf layout: OK"
+}
+
+# bats test_tags=c-impl
+@test "Rust library: 200 forked children use the library after the after-fork hook" {
+  skip_without_rust
+  run ./pihole-FTL rust-fork-test 200
+  assert_success
+  assert_output "rust fork test: 200/200 children ok"
+}
+
+# bats test_tags=c-impl
+@test "Rust library: a panic aborts pihole-FTL and prints the panic message" {
+  skip_without_rust
+  run ./pihole-FTL rust-panic-test
+  # FTL does not handle SIGABRT, so the process is killed by it (128 + 6)
+  assert_equal "${status}" 134
+  assert_output --partial "ftl-rs selftest panic"
+}
+
 # bats test_tags=contract
 @test "SHA256 checksum working" {
   run bash -c './pihole-FTL sha256sum test/test.pem'

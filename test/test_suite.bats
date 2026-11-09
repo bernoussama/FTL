@@ -2387,6 +2387,15 @@ skip_without_rust() {
   assert_output --partial "ftl-rs selftest panic"
 }
 
+# Phase 2 (sha256): C vs Rust comparison tests
+# -- end sha256
+
+# Phase 2 (idn2): C vs Rust comparison tests
+# -- end idn2
+
+# Phase 2 (complete): C vs Rust comparison tests
+# -- end complete
+
 # bats test_tags=contract
 @test "SHA256 checksum working" {
   run bash -c './pihole-FTL sha256sum test/test.pem'

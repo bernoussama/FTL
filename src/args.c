@@ -742,6 +742,20 @@ void parse_args(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	// C vs Rust comparison (not listed in help or completions):
+	// pihole-FTL rust-compare <module> [args], see src/ftl_rs_compare.c
+	if(argc >= 2 && strcmp(argv[1], "rust-compare") == 0)
+	{
+		// Enable stdout printing
+		cli_mode = true;
+#ifdef HAVE_FTL_RS
+		exit(ftl_rs_compare(argc - 2, argv + 2));
+#else
+		printf("FTL was built without the Rust library\n");
+		exit(EXIT_FAILURE);
+#endif
+	}
+
 	// Rust fork test (not listed in help or completions): forks <N> children
 	// that use the Rust library after ftl_rs_after_fork(), see
 	// src/ftl_rs_selftest.c

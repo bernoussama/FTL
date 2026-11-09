@@ -1,0 +1,9 @@
+# Dependencies come from rust/vendor/ only, so builds work offline and use
+# exactly the reviewed sources. Regenerate after changing Cargo.toml (see
+# rust/README.md):
+#   cargo vendor --versioned-dirs vendor
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"

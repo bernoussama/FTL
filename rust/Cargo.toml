@@ -11,6 +11,13 @@ name = "ftl_rs"
 crate-type = ["staticlib"]
 path = "src/lib.rs"
 
+# Vendored in rust/vendor/ (see README.md) so builds stay offline.
+# idna_adapter 1.1 selects the unicode-rs back end (unicode-normalization,
+# unicode-bidi) instead of ICU4X, which is much larger.
+[dependencies]
+idna = "1.1"
+idna_adapter = "~1.1"
+
 # No panic may unwind into C (docs/rust-rewrite-plan.md, ground rules)
 [profile.dev]
 panic = "abort"

@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 // Must match ABI_VERSION in rust/src/lib.rs
-#define FTL_RS_ABI_VERSION 3u
+#define FTL_RS_ABI_VERSION 4u
 
 #ifdef HAVE_FTL_RS
 // Byte buffer that Rust allocates (rust/src/buf.rs). Release it with
@@ -103,12 +103,24 @@ ftl_rs_buf ftl_rs_complete(int argc, const char *const *argv, const ftl_rs_conf_
 void ftl_rs_conf_entry_layout(size_t out[6]);
 // -- end complete
 
+// Phase 3: tar (rust/src/tar.rs)
+// -- end tar
+
+// Phase 3: gzip (rust/src/gzip.rs)
+// -- end gzip
+
+// Phase 3: zip (rust/src/zip.rs)
+// -- end zip
+
 // pihole-FTL rust-compare <module> [args]: runs the C and the Rust version of
 // a module on the same inputs and reports differences (src/ftl_rs_compare*.c)
 int ftl_rs_compare(int argc, char *argv[]);
 int ftl_rs_compare_sha256(int argc, char *argv[]);
 int ftl_rs_compare_idn2(int argc, char *argv[]);
 int ftl_rs_compare_complete(int argc, char *argv[]);
+int ftl_rs_compare_tar(int argc, char *argv[]);
+int ftl_rs_compare_gzip(int argc, char *argv[]);
+int ftl_rs_compare_zip(int argc, char *argv[]);
 
 // Test-only exports for the hidden rust-* subcommands (src/ftl_rs_selftest.c)
 #define FTL_RS_FORK_TEST_MAX_CHILDREN 1000u

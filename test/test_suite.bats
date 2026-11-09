@@ -2387,6 +2387,15 @@ skip_without_rust() {
   assert_output --partial "ftl-rs selftest panic"
 }
 
+# Phase 3 (tar): C vs Rust comparison tests
+# -- end tar
+
+# Phase 3 (gzip): C vs Rust comparison tests
+# -- end gzip
+
+# Phase 3 (zip): C vs Rust comparison tests
+# -- end zip
+
 # Phase 2 (sha256): C vs Rust comparison tests
 
 # bats test_tags=c-impl

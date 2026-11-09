@@ -15,15 +15,18 @@
 mod buf;
 mod complete;
 mod fork;
+mod gzip;
 mod idn;
 mod selftest;
 mod sha256;
+mod tar;
+mod zip;
 
 use std::ffi::c_char;
 
 /// Bumped whenever a function or type crossing the C/Rust boundary changes.
 /// The C side compares it with FTL_RS_ABI_VERSION from src/ftl_rs.h.
-pub const ABI_VERSION: u32 = 3;
+pub const ABI_VERSION: u32 = 4;
 
 /// ABI version this library was built with.
 ///

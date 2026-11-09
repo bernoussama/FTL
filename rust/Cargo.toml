@@ -17,6 +17,9 @@ path = "src/lib.rs"
 [dependencies]
 idna = "1.1"
 idna_adapter = "~1.1"
+# DEFLATE for gzip and zip (Phase 3): the Rust port of miniz, which the C
+# code uses. Default features only (alloc, no SIMD).
+miniz_oxide = "0.8"
 
 # No panic may unwind into C (docs/rust-rewrite-plan.md, ground rules)
 [profile.dev]

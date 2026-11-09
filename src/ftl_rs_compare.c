@@ -27,6 +27,9 @@ int ftl_rs_compare(int argc, char *argv[])
 		{ "sha256", ftl_rs_compare_sha256 },
 		{ "idn2", ftl_rs_compare_idn2 },
 		{ "complete", ftl_rs_compare_complete },
+		{ "tar", ftl_rs_compare_tar },
+		{ "gzip", ftl_rs_compare_gzip },
+		{ "zip", ftl_rs_compare_zip },
 	};
 
 	if(argc >= 1)

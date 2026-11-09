@@ -33,8 +33,9 @@
 #                      test/docker-test.sh run ./pihole-FTL -vv
 #   cargo-test [args]
 #                    Run cargo test for rust/ in the Rust build image. The
-#                    checkout is mounted read-only and rust/ is copied to /tmp
-#                    first. Extra arguments go to cargo test.
+#                    checkout is mounted read-only; rust/, test/vectors and
+#                    test/golden are copied to /tmp first, so tests can read
+#                    ../test/vectors. Extra arguments go to cargo test.
 #
 # Environment:
 #   FTL_BIN      Host path of a pihole-FTL binary to test instead of building.
@@ -188,15 +189,18 @@ run_prepared() {
     "
 }
 
-# cargo test for rust/ in the Rust image. rust/ is copied to /tmp (without
-# target/) so that cargo never writes into the mounted checkout.
+# cargo test for rust/ in the Rust image. rust/ (without target/) and the
+# shared test data (test/vectors, test/golden) are copied to /tmp so that
+# cargo never writes into the mounted checkout.
 cargo_test() {
   ensure_rust_image
   docker run "${docker_args[@]}" "${IMAGE}" bash -c '
     set -e
-    mkdir -p /tmp/ftl-rs
-    tar -C /src/rust --exclude=./target -cf - . | tar -C /tmp/ftl-rs -xf -
-    cd /tmp/ftl-rs
+    mkdir -p /tmp/ftl/rust /tmp/ftl/test
+    tar -C /src/rust --exclude=./target -cf - . | tar -C /tmp/ftl/rust -xf -
+    # Rust tests read the shared test data as ../test/vectors and ../test/golden
+    tar -C /src/test -cf - vectors golden | tar -C /tmp/ftl/test -xf -
+    cd /tmp/ftl/rust
     cargo test --locked --offline "$@"
   ' bash "$@" < /dev/null
 }

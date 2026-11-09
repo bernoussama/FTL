@@ -46,11 +46,9 @@ static int api_teleporter_GET(struct ftl_conn *api)
 		                       "The current app session is not allowed to export Pi-hole config settings (webserver.api.app_sudo is false)");
 	}
 
-	mz_zip_archive zip = { 0 };
-	void *ptr = NULL;
-	size_t size = 0u;
+	struct teleporter_zip zip = { 0 };
 	char filename[128] = "";
-	const char *error = generate_teleporter_zip(&zip, filename, &ptr, &size);
+	const char *error = generate_teleporter_zip(filename, &zip);
 	if(error != NULL)
 		return send_json_error(api, 500,
 		                       "compression_error",
@@ -66,20 +64,16 @@ static int api_teleporter_GET(struct ftl_conn *api)
 	         filename);
 
 	// Send 200 OK with appropriate headers
-	mg_send_http_ok(api->conn, "application/zip", size);
+	mg_send_http_ok(api->conn, "application/zip", zip.size);
 
 	// Clear extra headers
 	pi_hole_extra_headers[0] = '\0';
 
 	// Send raw (binary) ZIP content
-	mg_write(api->conn, ptr, size);
+	mg_write(api->conn, zip.data, zip.size);
 
-	// Free allocated ZIP memory. mz_zip_writer_finalize_heap_archive() has
-	// handed the buffer over to us and cleared it out of the writer's state,
-	// so mz_zip_writer_end() inside free_teleporter_zip() releases the
-	// writer but not the archive itself - that is ours now
+	// Free the ZIP archive
 	free_teleporter_zip(&zip);
-	free(ptr);
 
 	return 200;
 }

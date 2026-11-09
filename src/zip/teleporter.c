@@ -27,6 +27,8 @@
 #include "files.h"
 // DIR, dirent, opendir(), readdir(), closedir()
 #include <dirent.h>
+// stat(), S_ISDIR()
+#include <sys/stat.h>
 // sqlite3
 #include "database/sqlite3.h"
 // toml_parse()
@@ -167,14 +169,189 @@ static bool create_teleporter_database(const char *filename, const char **tables
 	return true;
 }
 
-const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], void **ptr, size_t *size)
+// Helpers for the two backends. miniz and the Rust library hand out the same
+// error codes (mz_zip_error values), so one function words both.
+static const char *tele_error_string(uint32_t code)
+{
+	return mz_zip_get_error_string((mz_zip_error)code);
+}
+
+#ifdef HAVE_FTL_RS
+// MS-DOS time and date of a time_t, in local time, computed as miniz's
+// mz_zip_time_t_to_dos_time() does
+static void tele_time_to_dos(time_t t, uint16_t *dos_time, uint16_t *dos_date)
+{
+	struct tm *tm = localtime(&t);
+	if(tm == NULL)
+	{
+		*dos_time = 0;
+		*dos_date = 0;
+		return;
+	}
+	*dos_time = (uint16_t)(((tm->tm_hour) << 11) + ((tm->tm_min) << 5) + ((tm->tm_sec) >> 1));
+	*dos_date = (uint16_t)(((tm->tm_year + 1900 - 1980) << 9) + ((tm->tm_mon + 1) << 5) + tm->tm_mday);
+}
+
+// The time of an MS-DOS time and date, as miniz's mz_zip_dos_to_time_t() reads it
+static time_t tele_dos_to_time(uint16_t dos_time, uint16_t dos_date)
+{
+	struct tm tm;
+	memset(&tm, 0, sizeof(tm));
+	tm.tm_isdst = -1;
+	tm.tm_year = ((dos_date >> 9) & 127) + 1980 - 1900;
+	tm.tm_mon = ((dos_date >> 5) & 15) - 1;
+	tm.tm_mday = dos_date & 31;
+	tm.tm_hour = (dos_time >> 11) & 31;
+	tm.tm_min = (dos_time >> 5) & 63;
+	tm.tm_sec = (dos_time << 1) & 62;
+	return mktime(&tm);
+}
+
+// Reads a whole file for the Rust writer, the way mz_zip_writer_add_file()
+// reads it. *data is NULL for an empty file, otherwise the caller frees it.
+// Fails for anything that cannot be read, a directory for one.
+static bool tele_read_file(const char *path, void **data, size_t *size, time_t *mtime)
+{
+	struct stat st;
+	if(stat(path, &st) != 0 || S_ISDIR(st.st_mode))
+		return false;
+	*data = NULL;
+	*size = 0u;
+	*mtime = st.st_mtime;
+	if(st.st_size == 0)
+		return true;
+
+	FILE *fp = fopen(path, "rb");
+	if(fp == NULL)
+		return false;
+	void *buf = malloc((size_t)st.st_size);
+	if(buf == NULL)
+	{
+		fclose(fp);
+		return false;
+	}
+	const size_t nread = fread(buf, 1, (size_t)st.st_size, fp);
+	const bool ok = nread == (size_t)st.st_size && !ferror(fp);
+	fclose(fp);
+	if(!ok)
+	{
+		free(buf);
+		return false;
+	}
+	*data = buf;
+	*size = nread;
+	return true;
+}
+#endif
+
+// The archive being built: miniz's heap writer, or the Rust writer in
+// HAVE_FTL_RS builds. generate_teleporter_zip() takes the same steps with both.
+struct tele_writer {
+#ifdef HAVE_FTL_RS
+	ftl_rs_zip_writer *writer;
+#else
+	mz_zip_archive zip;
+#endif
+};
+
+static bool tele_writer_init(struct tele_writer *w)
+{
+#ifdef HAVE_FTL_RS
+	w->writer = ftl_rs_zip_writer_new();
+	return w->writer != NULL;
+#else
+	memset(&w->zip, 0, sizeof(w->zip));
+	// Start with 64KB allocation size (pihole.TOML is slightly larger than 32KB
+	// at the time of writing this)
+	return mz_zip_writer_init_heap(&w->zip, 0, 64*1024);
+#endif
+}
+
+// Adds a file from disk as member name, dated with the file's modification time
+static bool tele_writer_add_file(struct tele_writer *w, const char *name, const char *path, const char *comment)
+{
+#ifdef HAVE_FTL_RS
+	void *data = NULL;
+	size_t size = 0u;
+	time_t mtime = 0;
+	if(!tele_read_file(path, &data, &size, &mtime))
+		return false;
+	uint16_t dos_time = 0, dos_date = 0;
+	tele_time_to_dos(mtime, &dos_time, &dos_date);
+	const uint32_t rc = ftl_rs_zip_writer_add(w->writer, name, data, size, comment, dos_time, dos_date);
+	// An empty file leaves data NULL (FTL's free() warns on NULL)
+	if(data != NULL)
+		free(data);
+	return rc == 0;
+#else
+	return mz_zip_writer_add_file(&w->zip, name, path, comment, (uint16_t)strlen(comment), MZ_BEST_COMPRESSION);
+#endif
+}
+
+// Adds a member from memory, dated now
+static bool tele_writer_add_mem(struct tele_writer *w, const char *name, const void *data, size_t size, const char *comment)
+{
+#ifdef HAVE_FTL_RS
+	uint16_t dos_time = 0, dos_date = 0;
+	tele_time_to_dos(time(NULL), &dos_time, &dos_date);
+	return ftl_rs_zip_writer_add(w->writer, name, data, size, comment, dos_time, dos_date) == 0;
+#else
+	return mz_zip_writer_add_mem_ex(&w->zip, name, data, size, comment, (uint16_t)strlen(comment), MZ_BEST_COMPRESSION, 0, 0);
+#endif
+}
+
+// Ends the members and takes the finished archive out of the writer. On failure
+// out is left alone.
+static bool tele_writer_finish(struct tele_writer *w, struct teleporter_zip *out)
+{
+#ifdef HAVE_FTL_RS
+	ftl_rs_buf buf = { NULL, 0, 0 };
+	if(ftl_rs_zip_writer_finish(w->writer, &buf) != 0)
+		return false;
+	out->buf = buf;
+	out->data = buf.ptr;
+	out->size = buf.len;
+	return true;
+#else
+	void *ptr = NULL;
+	size_t size = 0u;
+	if(!mz_zip_writer_finalize_heap_archive(&w->zip, &ptr, &size))
+		return false;
+	out->data = ptr;
+	out->size = size;
+	return true;
+#endif
+}
+
+// Releases the writer. A finished archive is not part of it and stays valid.
+static void tele_writer_end(struct tele_writer *w)
+{
+#ifdef HAVE_FTL_RS
+	ftl_rs_zip_writer_free(w->writer);
+	w->writer = NULL;
+#else
+	mz_zip_writer_end(&w->zip);
+#endif
+}
+
+// The error that makes the archive fail validation, or 0 if it is valid
+static uint32_t tele_validate(const struct teleporter_zip *zip)
+{
+#ifdef HAVE_FTL_RS
+	return ftl_rs_zip_validate(zip->data, zip->size);
+#else
+	mz_zip_error err = MZ_ZIP_NO_ERROR;
+	if(mz_zip_validate_mem_archive(zip->data, zip->size, MZ_ZIP_FLAG_VALIDATE_LOCATE_FILE_FLAG, &err))
+		return MZ_ZIP_NO_ERROR;
+	return (uint32_t)err;
+#endif
+}
+
+const char *generate_teleporter_zip(char filename[128], struct teleporter_zip *zip)
 {
 	// Initialize ZIP archive
-	memset(zip, 0, sizeof(*zip));
-
-	// Start with 64KB allocation size (pihole.TOML is slightly larger than 32KB
-	// at the time of writing thjs)
-	if(!mz_zip_writer_init_heap(zip, 0, 64*1024))
+	struct tele_writer w;
+	if(!tele_writer_init(&w))
 	{
 		return "Failed creating heap ZIP archive";
 	}
@@ -182,27 +359,27 @@ const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], voi
 	// Add pihole.toml to the ZIP archive
 	const char *file_comment = "Pi-hole's configuration";
 	const char *file_path = GLOBALTOMLPATH;
-	if(!mz_zip_writer_add_file(zip, file_path+1, file_path, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION))
+	if(!tele_writer_add_file(&w, file_path+1, file_path, file_comment))
 	{
-		mz_zip_writer_end(zip);
+		tele_writer_end(&w);
 		return "Failed to add "GLOBALTOMLPATH" to heap ZIP archive!";
 	}
 
 	// Add /etc/hosts to the ZIP archive
 	file_comment = "System's HOSTS file";
 	file_path = "/etc/hosts";
-	if(!mz_zip_writer_add_file(zip, file_path+1, file_path, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION))
+	if(!tele_writer_add_file(&w, file_path+1, file_path, file_comment))
 	{
-		mz_zip_writer_end(zip);
+		tele_writer_end(&w);
 		return "Failed to add /etc/hosts to heap ZIP archive!";
 	}
 
 	// Add /etc/pihole/dhcp.lease to the ZIP archive if it exists
 	file_comment = "DHCP leases file";
 	file_path = "/etc/pihole/dhcp.leases";
-	if(file_exists(file_path) && !mz_zip_writer_add_file(zip, file_path+1, file_path, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION))
+	if(file_exists(file_path) && !tele_writer_add_file(&w, file_path+1, file_path, file_comment))
 	{
-		mz_zip_writer_end(zip);
+		tele_writer_end(&w);
 		return "Failed to add /etc/pihole/dhcp.leases to heap ZIP archive!";
 	}
 
@@ -229,7 +406,7 @@ const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], voi
 				file_comment = "dnsmasq configuration file";
 				file_path = fullpath;
 
-				if(!mz_zip_writer_add_file(zip, file_path+1, file_path, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION))
+				if(!tele_writer_add_file(&w, file_path+1, file_path, file_comment))
 					continue;
 			}
 			closedir(dir);
@@ -246,17 +423,17 @@ const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], voi
 		file_path = config.files.gravity.v.s;
 		if(file_path[0] == '/')
 			file_path++;
-		if(!mz_zip_writer_add_mem_ex(zip, file_path, dbbuf, dbsize, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION, 0, 0))
+		if(!tele_writer_add_mem(&w, file_path, dbbuf, dbsize, file_comment))
 		{
 			sqlite3_free(dbbuf);
-			mz_zip_writer_end(zip);
+			tele_writer_end(&w);
 			return "Failed to add gravity database to heap ZIP archive!";
 		}
 		sqlite3_free(dbbuf);
 	}
 	else
 	{
-		mz_zip_writer_end(zip);
+		tele_writer_end(&w);
 		return "Failed to create gravity database for heap ZIP archive!";
 	}
 
@@ -267,33 +444,32 @@ const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], voi
 		file_path = config.files.database.v.s;
 		if(file_path[0] == '/')
 			file_path++;
-		if(!mz_zip_writer_add_mem_ex(zip, file_path, dbbuf, dbsize, file_comment, (uint16_t)strlen(file_comment), MZ_BEST_COMPRESSION, 0, 0))
+		if(!tele_writer_add_mem(&w, file_path, dbbuf, dbsize, file_comment))
 		{
 			sqlite3_free(dbbuf);
-			mz_zip_writer_end(zip);
+			tele_writer_end(&w);
 			return "Failed to add FTL database to heap ZIP archive!";
 		}
 		sqlite3_free(dbbuf);
 	}
 	else
 	{
-		mz_zip_writer_end(zip);
+		tele_writer_end(&w);
 		return "Failed to create FTL database for heap ZIP archive!";
 	}
 
-	// Get the heap data so we can send it to the requesting client
-	if(!mz_zip_writer_finalize_heap_archive(zip, ptr, size))
-	{
-		mz_zip_writer_end(zip);
+	// Get the finished archive so we can send it to the requesting client
+	const bool finished = tele_writer_finish(&w, zip);
+	tele_writer_end(&w);
+	if(!finished)
 		return "Failed to finalize heap ZIP archive!";
-	}
 
 	// Verify that the ZIP archive is valid
-	mz_zip_error pErr;
-	if(!mz_zip_validate_mem_archive(*ptr, *size, MZ_ZIP_FLAG_VALIDATE_LOCATE_FILE_FLAG, &pErr))
+	const uint32_t verr = tele_validate(zip);
+	if(verr != 0)
 	{
 		log_warn("Failed to validate generated Teleporter ZIP archive: %s",
-		         mz_zip_get_error_string(pErr));
+		         tele_error_string(verr));
 	}
 
 	// Generate filename for ZIP archive (it has both the hostname and the
@@ -707,30 +883,130 @@ static const char *test_and_import_database(void *ptr, size_t size, const char *
 	return NULL;
 }
 
+// A member of a Teleporter ZIP archive, as read_teleporter_zip() uses it. The
+// names are those of miniz's mz_zip_archive_file_stat, so the reader reads the
+// same in both builds.
+struct tele_zip_stat {
+	char m_filename[512];
+	char m_comment[512];
+	uint64_t m_comp_size;
+	uint64_t m_uncomp_size;
+	time_t m_time;
+};
+
+// The archive being read: miniz's memory reader, or the Rust reader in
+// HAVE_FTL_RS builds
+struct tele_reader {
+#ifdef HAVE_FTL_RS
+	ftl_rs_zip_reader *reader;
+#else
+	mz_zip_archive zip;
+#endif
+};
+
+// Opens the archive in buf. Returns 0, or the zip error code.
+static uint32_t tele_reader_open(struct tele_reader *r, uint8_t *buf, size_t len)
+{
+#ifdef HAVE_FTL_RS
+	return ftl_rs_zip_open(buf, len, &r->reader);
+#else
+	memset(&r->zip, 0, sizeof(r->zip));
+	if(mz_zip_reader_init_mem(&r->zip, buf, len, 0))
+		return MZ_ZIP_NO_ERROR;
+	const mz_zip_error err = mz_zip_get_last_error(&r->zip);
+	return (uint32_t)err;
+#endif
+}
+
+// The text of the archive's last error. Like mz_zip_get_last_error(), this
+// takes the error, so the next call gives no error.
+static const char *tele_reader_error(struct tele_reader *r)
+{
+#ifdef HAVE_FTL_RS
+	return tele_error_string(ftl_rs_zip_last_error(r->reader));
+#else
+	const mz_zip_error err = mz_zip_get_last_error(&r->zip);
+	return tele_error_string((uint32_t)err);
+#endif
+}
+
+static uint32_t tele_reader_count(struct tele_reader *r)
+{
+#ifdef HAVE_FTL_RS
+	return ftl_rs_zip_num_files(r->reader);
+#else
+	return mz_zip_reader_get_num_files(&r->zip);
+#endif
+}
+
+static bool tele_reader_stat(struct tele_reader *r, uint32_t idx, struct tele_zip_stat *st)
+{
+#ifdef HAVE_FTL_RS
+	ftl_rs_zip_stat s;
+	if(!ftl_rs_zip_file_stat(r->reader, idx, &s))
+		return false;
+	memcpy(st->m_filename, s.name, sizeof(st->m_filename));
+	memcpy(st->m_comment, s.comment, sizeof(st->m_comment));
+	st->m_comp_size = s.comp_size;
+	st->m_uncomp_size = s.uncomp_size;
+	st->m_time = tele_dos_to_time(s.dos_time, s.dos_date);
+	return true;
+#else
+	mz_zip_archive_file_stat s;
+	if(!mz_zip_reader_file_stat(&r->zip, idx, &s))
+		return false;
+	memcpy(st->m_filename, s.m_filename, sizeof(st->m_filename));
+	memcpy(st->m_comment, s.m_comment, sizeof(st->m_comment));
+	st->m_comp_size = s.m_comp_size;
+	st->m_uncomp_size = s.m_uncomp_size;
+	st->m_time = s.m_time;
+	return true;
+#endif
+}
+
+static bool tele_reader_extract(struct tele_reader *r, uint32_t idx, void *buf, size_t size)
+{
+#ifdef HAVE_FTL_RS
+	return ftl_rs_zip_extract(r->reader, idx, buf, size);
+#else
+	return mz_zip_reader_extract_to_mem(&r->zip, idx, buf, size, 0);
+#endif
+}
+
+static void tele_reader_close(struct tele_reader *r)
+{
+#ifdef HAVE_FTL_RS
+	ftl_rs_zip_reader_free(r->reader);
+	r->reader = NULL;
+#else
+	mz_zip_reader_end(&r->zip);
+#endif
+}
+
 const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * const hint, cJSON *import, cJSON *imported_files)
 {
 	// Initialize ZIP archive
-	mz_zip_archive zip = { 0 };
-	memset(&zip, 0, sizeof(zip));
+	struct tele_reader zip = { 0 };
 
 	log_debug(DEBUG_CONFIG, "Reading ZIP archive from memory buffer (size %zu)", buflen);
 
 	// Open ZIP archive from memory buffer
-	if(!mz_zip_reader_init_mem(&zip, buffer, buflen, 0))
+	const uint32_t open_err = tele_reader_open(&zip, buffer, buflen);
+	if(open_err != 0)
 	{
-		set_hint(hint, mz_zip_get_error_string(mz_zip_get_last_error(&zip)));
+		set_hint(hint, tele_error_string(open_err));
 		return "Failed to parse received ZIP archive";
 	}
 
 	// Loop over all files in the ZIP archive
-	for(mz_uint i = 0; i < mz_zip_reader_get_num_files(&zip); i++)
+	for(uint32_t i = 0; i < tele_reader_count(&zip); i++)
 	{
 		// Get file information
-		mz_zip_archive_file_stat file_stat;
-		if(!mz_zip_reader_file_stat(&zip, i, &file_stat))
+		struct tele_zip_stat file_stat;
+		if(!tele_reader_stat(&zip, i, &file_stat))
 		{
 			log_warn("Failed to get file information for file %u in ZIP archive: %s",
-			         i, mz_zip_get_error_string(mz_zip_get_last_error(&zip)));
+			         i, tele_reader_error(&zip));
 			continue;
 		}
 
@@ -772,13 +1048,13 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 		if(ptr == NULL)
 		{
 			log_warn("Failed to allocate memory for file %u (%s) in ZIP archive: %s",
-			         i, file_stat.m_filename, mz_zip_get_error_string(mz_zip_get_last_error(&zip)));
+			         i, file_stat.m_filename, tele_reader_error(&zip));
 			continue;
 		}
-		if(!mz_zip_reader_extract_to_mem(&zip, i, ptr, file_stat.m_uncomp_size, 0))
+		if(!tele_reader_extract(&zip, i, ptr, file_stat.m_uncomp_size))
 		{
 			log_warn("Failed to read file %u (%s) in ZIP archive: %s",
-			         i, file_stat.m_filename, mz_zip_get_error_string(mz_zip_get_last_error(&zip)));
+			         i, file_stat.m_filename, tele_reader_error(&zip));
 			free(ptr);
 			continue;
 		}
@@ -807,7 +1083,7 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 			if(err != NULL)
 			{
 				free(ptr);
-				mz_zip_reader_end(&zip);
+				tele_reader_close(&zip);
 				return err;
 			}
 			log_debug(DEBUG_CONFIG, "Imported Pi-hole configuration: %s", file_stat.m_filename);
@@ -829,7 +1105,7 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 			if(err != NULL)
 			{
 				free(ptr);
-				mz_zip_reader_end(&zip);
+				tele_reader_close(&zip);
 				return err;
 			}
 			log_debug(DEBUG_CONFIG, "Imported DHCP leases: %s", file_stat.m_filename);
@@ -881,7 +1157,7 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 			if(err != NULL)
 			{
 				free(ptr);
-				mz_zip_reader_end(&zip);
+				tele_reader_close(&zip);
 				return err;
 			}
 			log_debug(DEBUG_CONFIG, "Imported database: %s", file_stat.m_filename);
@@ -893,8 +1169,8 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 				char *tablename = calloc(len, sizeof(char));
 				if(tablename == NULL)
 				{
+					// The member's data is still freed once, below
 					log_err("Failed to allocate memory for table name");
-					free(ptr);
 					continue;
 				}
 
@@ -930,25 +1206,30 @@ const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char * con
 	}
 
 	// Close ZIP archive
-	mz_zip_reader_end(&zip);
+	tele_reader_close(&zip);
 
 	// Everything worked well
 	return NULL;
 }
 
-bool free_teleporter_zip(mz_zip_archive *zip)
+void free_teleporter_zip(struct teleporter_zip *zip)
 {
-	return mz_zip_writer_end(zip);
+#ifdef HAVE_FTL_RS
+	ftl_rs_buf_free(&zip->buf);
+	zip->buf = (ftl_rs_buf){ NULL, 0, 0 };
+#else
+	free(zip->data);
+#endif
+	zip->data = NULL;
+	zip->size = 0u;
 }
 
 bool write_teleporter_zip_to_disk(void)
 {
 	// Generate in-memory ZIP file
-	mz_zip_archive zip = { 0 };
-	void *ptr = NULL;
-	size_t size = 0u;
+	struct teleporter_zip zip = { 0 };
 	char filename[128] = "";
-	const char *error = generate_teleporter_zip(&zip, filename, &ptr, &size);
+	const char *error = generate_teleporter_zip(filename, &zip);
 	if(error != NULL)
 	{
 		log_err("Failed to create Teleporter ZIP file: %s", error);
@@ -961,23 +1242,19 @@ bool write_teleporter_zip_to_disk(void)
 	{
 		log_err("Failed to open %s for writing: %s", filename, strerror(errno));
 		free_teleporter_zip(&zip);
-		free(ptr);
 		return false;
 	}
-	if(fwrite(ptr, 1, size, fp) != size)
+	if(fwrite(zip.data, 1, zip.size, fp) != zip.size)
 	{
-		log_err("Failed to write %zu bytes to %s: %s", size, filename, strerror(errno));
+		log_err("Failed to write %zu bytes to %s: %s", zip.size, filename, strerror(errno));
 		free_teleporter_zip(&zip);
-		free(ptr);
 		fclose(fp);
 		return false;
 	}
 	fclose(fp);
 
-	// Free allocated ZIP memory, including the archive buffer that
-	// mz_zip_writer_finalize_heap_archive() handed over to us
+	// Free the ZIP archive
 	free_teleporter_zip(&zip);
-	free(ptr);
 
 	/* Output filename on successful creation */
 	log_info("%s", filename);

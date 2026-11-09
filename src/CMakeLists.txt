@@ -430,6 +430,9 @@ if(BUILD_TAR_REGRESSION)
             ${PROJECT_SOURCE_DIR}/test/tar_regression.c
             $<TARGET_OBJECTS:cJSON>)
     target_include_directories(tar_regression PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    # The harness tests the C reference, so the directory-wide HAVE_FTL_RS of
+    # a Rust build must not switch it to the (unlinked) Rust functions
+    target_compile_options(tar_regression PRIVATE -UHAVE_FTL_RS)
 
     # Optional ASan/UBSan instrumentation for local runs:
     #   ./build.sh "-DTAR_REGRESSION_SANITIZE=ON" test
@@ -530,6 +533,9 @@ if(BUILD_GZIP_REGRESSION)
             ${PROJECT_SOURCE_DIR}/test/gzip_regression.c
             $<TARGET_OBJECTS:miniz>)
     target_include_directories(gzip_regression PRIVATE ${PROJECT_SOURCE_DIR}/src)
+    # The harness tests the C reference, so the directory-wide HAVE_FTL_RS of
+    # a Rust build must not switch it to the (unlinked) Rust functions
+    target_compile_options(gzip_regression PRIVATE -UHAVE_FTL_RS)
 
     # Optional ASan/UBSan instrumentation for local runs:
     #   ./build.sh "-DGZIP_REGRESSION_SANITIZE=ON" test

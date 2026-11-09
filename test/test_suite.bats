@@ -2362,12 +2362,14 @@ skip_without_rust() {
 }
 
 # bats test_tags=c-impl
-@test "Rust library: rust-version passes the ABI and ftl_rs_buf layout checks" {
+@test "Rust library: rust-version passes the ABI and layout checks" {
   skip_without_rust
   run ./pihole-FTL rust-version
   assert_success
   assert_line --regexp --index 0 '^ftl-rs [^ ]+ \(ABI [0-9]+\)$'
   assert_line "ftl_rs_buf layout: OK"
+  assert_line "ftl_rs_conf_entry layout: OK"
+  assert_line "ftl_rs_zip_stat layout: OK"
 }
 
 # bats test_tags=c-impl
@@ -2388,12 +2390,172 @@ skip_without_rust() {
 }
 
 # Phase 3 (tar): C vs Rust comparison tests
+# bats test_tags=c-impl
+@test "rust-compare tar reports 0 differences" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare tar
+  assert_success
+  assert_line --regexp '^rust-compare tar: [0-9]+ inputs, 0 differences$'
+  # 45 committed vectors, 88 generated archives and 4000 mutants
+  local count
+  count="$(sed -n 's/^rust-compare tar: \([0-9]*\) inputs, 0 differences$/\1/p' <<< "${output}")"
+  [ "${count}" -ge 4133 ]
+}
 # -- end tar
 
 # Phase 3 (gzip): C vs Rust comparison tests
+# bats test_tags=c-impl
+@test "rust-compare gzip reports 0 differences" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare gzip test/vectors/gzip/*.gz
+  assert_success
+  assert_line --regexp '^rust-compare gzip: [0-9]+ inputs, 0 differences$'
+  refute_line --partial "C crashed on"
+  # 9 committed vectors, 108 round trips, 16 header variants, 12 invalid headers,
+  # 219 truncations and 3000 mutants
+  local count
+  count="$(sed -n 's/^rust-compare gzip: \([0-9]*\) inputs, 0 differences$/\1/p' <<< "${output}")"
+  [ "${count}" -ge 3364 ]
+}
 # -- end gzip
 
 # Phase 3 (zip): C vs Rust comparison tests
+# bats test_tags=c-impl
+@test "Rust zip: teleporter export is a valid ZIP archive that lists pihole.toml once" {
+  skip_without_rust
+  run ./pihole-FTL --teleporter
+  mv "${lines[-1]}" "${BATS_TEST_TMPDIR}/export.zip" 2>/dev/null || true
+  assert_success
+  run python3 -m zipfile -t "${BATS_TEST_TMPDIR}/export.zip"
+  assert_success
+  assert_output --partial "Done testing"
+  run python3 -c '
+import sys, zipfile
+names = zipfile.ZipFile(sys.argv[1]).namelist()
+print("pihole.toml listed: %s" % ("etc/pihole/pihole.toml" in names))
+print("duplicate names: %d" % (len(names) - len(set(names))))
+' "${BATS_TEST_TMPDIR}/export.zip"
+  assert_line "pihole.toml listed: True"
+  assert_line "duplicate names: 0"
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: teleporter export deflates every member except those of 3 bytes or less, which are stored" {
+  skip_without_rust
+  run ./pihole-FTL --teleporter
+  mv "${lines[-1]}" "${BATS_TEST_TMPDIR}/export.zip" 2>/dev/null || true
+  assert_success
+  run python3 -c '
+import sys, zipfile
+infos = zipfile.ZipFile(sys.argv[1]).infolist()
+bad = [i.filename for i in infos
+       if i.compress_type != (zipfile.ZIP_STORED if i.file_size <= 3 else zipfile.ZIP_DEFLATED)]
+print("wrong method: %s" % (", ".join(bad) or "none"))
+print("deflated members: %d" % sum(i.compress_type == zipfile.ZIP_DEFLATED for i in infos))
+' "${BATS_TEST_TMPDIR}/export.zip"
+  assert_line "wrong method: none"
+  assert_line --regexp '^deflated members: [1-9][0-9]*$'
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: import of a truncated teleporter archive fails with 'failed finding central directory'" {
+  skip_without_rust
+  run ./pihole-FTL --teleporter
+  mv "${lines[-1]}" "${BATS_TEST_TMPDIR}/export.zip" 2>/dev/null || true
+  assert_success
+  size="$(wc -c < "${BATS_TEST_TMPDIR}/export.zip")"
+  head -c "$((size / 2))" "${BATS_TEST_TMPDIR}/export.zip" > "${BATS_TEST_TMPDIR}/truncated.zip"
+  run ./pihole-FTL --teleporter "${BATS_TEST_TMPDIR}/truncated.zip"
+  assert_failure
+  assert_output --partial "Hint: failed finding central directory"
+  refute_output --partial "Imported"
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: import of a file that is not a ZIP archive fails with 'failed finding central directory'" {
+  skip_without_rust
+  head -c 200 /dev/zero | tr '\0' 'x' > "${BATS_TEST_TMPDIR}/text.zip"
+  run ./pihole-FTL --teleporter "${BATS_TEST_TMPDIR}/text.zip"
+  assert_failure
+  assert_output --partial "Hint: failed finding central directory"
+  refute_output --partial "Imported"
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: import of an empty file fails with 'invalid size'" {
+  skip_without_rust
+  : > "${BATS_TEST_TMPDIR}/empty.zip"
+  run ./pihole-FTL --teleporter "${BATS_TEST_TMPDIR}/empty.zip"
+  assert_failure
+  assert_output --partial "has an invalid size (0 bytes, max. 134217728 bytes)"
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: a member declaring more than 256 MiB is skipped and the rest of the archive imports" {
+  skip_without_rust
+  run ./pihole-FTL --teleporter
+  mv "${lines[-1]}" "${BATS_TEST_TMPDIR}/export.zip" 2>/dev/null || true
+  assert_success
+  run python3 -c '
+import sys, zipfile
+with open(sys.argv[2], "wb") as f:
+    f.write(zipfile.ZipFile(sys.argv[1]).read("etc/pihole/pihole.toml"))
+' "${BATS_TEST_TMPDIR}/export.zip" "${BATS_TEST_TMPDIR}/pihole.toml"
+  assert_success
+  printf 'leases\n' > "${BATS_TEST_TMPDIR}/leases"
+  # zip.py writes the declared size into both headers, so no 256 MiB of data is needed
+  run python3 test/golden/fixtures/teleporter/zip.py make "${BATS_TEST_TMPDIR}/oversize.zip" \
+    --declare etc/pihole/dhcp.leases=268435457 \
+    "etc/pihole/pihole.toml=${BATS_TEST_TMPDIR}/pihole.toml" \
+    "etc/pihole/dhcp.leases=${BATS_TEST_TMPDIR}/leases"
+  assert_success
+  run ./pihole-FTL --teleporter "${BATS_TEST_TMPDIR}/oversize.zip"
+  assert_success
+  assert_output --partial "(etc/pihole/dhcp.leases) in ZIP archive: uncompressed size 268435457 is too large"
+  assert_output --partial "Imported etc/pihole/pihole.toml"
+  refute_output --partial "Imported etc/pihole/dhcp.leases"
+}
+
+# bats test_tags=c-impl
+@test "Rust zip: a stored member with a wrong CRC is not imported and does not crash pihole-FTL" {
+  skip_without_rust
+  run ./pihole-FTL --teleporter
+  mv "${lines[-1]}" "${BATS_TEST_TMPDIR}/export.zip" 2>/dev/null || true
+  assert_success
+  run python3 -c '
+import struct, sys, zipfile
+name = "etc/pihole/pihole.toml"
+info = zipfile.ZipInfo(name, (2020, 1, 1, 0, 0, 0))
+info.compress_type = zipfile.ZIP_STORED
+with zipfile.ZipFile(sys.argv[2], "w") as zf:
+    zf.writestr(info, zipfile.ZipFile(sys.argv[1]).read(name))
+pos = zipfile.ZipFile(sys.argv[2]).getinfo(name).header_offset
+raw = bytearray(open(sys.argv[2], "rb").read())
+n, m = struct.unpack_from("<HH", raw, pos + 26)
+raw[pos + 30 + n + m] ^= 0x01
+open(sys.argv[2], "wb").write(raw)
+' "${BATS_TEST_TMPDIR}/export.zip" "${BATS_TEST_TMPDIR}/badcrc.zip"
+  assert_success
+  run ./pihole-FTL --teleporter "${BATS_TEST_TMPDIR}/badcrc.zip"
+  assert_output --partial "(etc/pihole/pihole.toml) in ZIP archive: CRC-32 check failed"
+  # A signal shows up as 128 + its number, so the process must not die of one
+  [ "${status}" -lt 128 ]
+  refute_output --partial "Imported etc/pihole/pihole.toml"
+}
+# bats test_tags=c-impl
+@test "rust-compare zip reports 0 differences" {
+  skip_without_rust
+  run ./pihole-FTL rust-compare zip
+  assert_success
+  assert_line --regexp '^rust-compare zip: [0-9]+ inputs, 0 differences$'
+  assert_line "rust-compare zip: C crashes: 0"
+  refute_line --partial "C crashed on"
+  # 44 valid archives (22 member lists, each written by both writers), 272
+  # truncations of the two small bases and 4000 mutants (1000 of each base)
+  local count
+  count="$(sed -n 's/^rust-compare zip: \([0-9]*\) inputs, 0 differences$/\1/p' <<< "${output}")"
+  [ "${count}" -ge 4000 ]
+}
 # -- end zip
 
 # Phase 2 (sha256): C vs Rust comparison tests

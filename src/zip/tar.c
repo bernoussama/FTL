@@ -10,6 +10,9 @@
 
 #include "zip/tar.h"
 #include "log.h"
+#ifdef HAVE_FTL_RS
+#include "ftl_rs.h"
+#endif
 
 // TAR offsets
 #define TAR_NAME_OFFSET 0
@@ -100,15 +103,16 @@ static bool tar_entry_span(const size_t size, size_t *span)
 }
 
 /**
- * Find a file in a TAR archive
+ * Find a file in a TAR archive. This is the C reference; find_file_in_tar()
+ * runs the Rust version in HAVE_FTL_RS builds.
  * @param tarData Pointer to the TAR archive in memory
  * @param tarSize Size of the TAR archive in memory in bytes
  * @param fileName Name of the file to find
  * @param fileSize Pointer to a size_t variable to store the file size in
  * @return Pointer to the file data or NULL if not found
  */
-const char * __attribute__((nonnull (1,3,4))) find_file_in_tar(const uint8_t *tarData, const size_t tarSize,
-                                                               const char *fileName, size_t *fileSize)
+const char * __attribute__((nonnull (1,3,4))) find_file_in_tar_c(const uint8_t *tarData, const size_t tarSize,
+                                                                 const char *fileName, size_t *fileSize)
 {
 	size_t size, p = 0, entrySpan = 0;
 
@@ -167,12 +171,13 @@ const char * __attribute__((nonnull (1,3,4))) find_file_in_tar(const uint8_t *ta
 }
 
 /**
- * List all files in a TAR archive
+ * List all files in a TAR archive. This is the C reference; list_files_in_tar()
+ * runs the Rust version in HAVE_FTL_RS builds.
  * @param tarData Pointer to the TAR archive in memory
  * @param tarSize Size of the TAR archive in memory in bytes
  * @return Pointer to a cJSON array containing all file names with file size
  */
-cJSON * __attribute__((nonnull (1))) list_files_in_tar(const uint8_t *tarData, const size_t tarSize)
+cJSON * __attribute__((nonnull (1))) list_files_in_tar_c(const uint8_t *tarData, const size_t tarSize)
 {
 	cJSON *files = cJSON_CreateArray();
 	size_t size, p = 0, entrySpan = 0;
@@ -225,3 +230,78 @@ cJSON * __attribute__((nonnull (1))) list_files_in_tar(const uint8_t *tarData, c
 	}
 	return files;
 }
+
+#ifdef HAVE_FTL_RS
+/**
+ * Find a file in a TAR archive, as find_file_in_tar_c() does (rust/src/tar.rs)
+ * @param tarData Pointer to the TAR archive in memory
+ * @param tarSize Size of the TAR archive in memory in bytes
+ * @param fileName Name of the file to find
+ * @param fileSize Pointer to a size_t variable to store the file size in
+ * @return Pointer to the file data or NULL if not found
+ */
+const char * __attribute__((nonnull (1,3,4))) find_file_in_tar(const uint8_t *tarData, const size_t tarSize,
+                                                               const char *fileName, size_t *fileSize)
+{
+	size_t payloadOffset = 0;
+
+	// Rust sets fileSize to 0 when the file is not found
+	if (!ftl_rs_tar_find(tarData, tarSize, fileName, &payloadOffset, fileSize))
+		return NULL;
+
+	return (const char *)tarData + payloadOffset;
+}
+
+/**
+ * List all files in a TAR archive, as list_files_in_tar_c() does (rust/src/tar.rs)
+ * @param tarData Pointer to the TAR archive in memory
+ * @param tarSize Size of the TAR archive in memory in bytes
+ * @return Pointer to a cJSON array containing all file names with file size
+ */
+cJSON * __attribute__((nonnull (1))) list_files_in_tar(const uint8_t *tarData, const size_t tarSize)
+{
+	cJSON *files = cJSON_CreateArray();
+	ftl_rs_buf entries = ftl_rs_tar_list(tarData, tarSize);
+
+	// One ftl_rs_tar_entry per file, in archive order
+	for (size_t i = 0; i + sizeof(ftl_rs_tar_entry) <= entries.len; i += sizeof(ftl_rs_tar_entry))
+	{
+		ftl_rs_tar_entry entry;
+		memcpy(&entry, entries.ptr + i, sizeof(entry));
+
+		// Rust has checked that the name ends with a NUL inside its field
+		cJSON *file = cJSON_CreateObject();
+		cJSON_AddItemToObject(file, "name", cJSON_CreateString((const char *)tarData + entry.offset));
+		cJSON_AddItemToObject(file, "size", cJSON_CreateNumber(entry.size));
+		cJSON_AddItemToArray(files, file);
+	}
+
+	ftl_rs_buf_free(&entries);
+	return files;
+}
+#else
+/**
+ * Find a file in a TAR archive (builds without FTL_RUST use the C reference)
+ * @param tarData Pointer to the TAR archive in memory
+ * @param tarSize Size of the TAR archive in memory in bytes
+ * @param fileName Name of the file to find
+ * @param fileSize Pointer to a size_t variable to store the file size in
+ * @return Pointer to the file data or NULL if not found
+ */
+const char * __attribute__((nonnull (1,3,4))) find_file_in_tar(const uint8_t *tarData, const size_t tarSize,
+                                                               const char *fileName, size_t *fileSize)
+{
+	return find_file_in_tar_c(tarData, tarSize, fileName, fileSize);
+}
+
+/**
+ * List all files in a TAR archive (builds without FTL_RUST use the C reference)
+ * @param tarData Pointer to the TAR archive in memory
+ * @param tarSize Size of the TAR archive in memory in bytes
+ * @return Pointer to a cJSON array containing all file names with file size
+ */
+cJSON * __attribute__((nonnull (1))) list_files_in_tar(const uint8_t *tarData, const size_t tarSize)
+{
+	return list_files_in_tar_c(tarData, tarSize);
+}
+#endif

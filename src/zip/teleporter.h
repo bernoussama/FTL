@@ -12,9 +12,22 @@
 
 #include "zip/miniz/miniz.h"
 #include "webserver/cJSON/cJSON.h"
+#ifdef HAVE_FTL_RS
+#include "ftl_rs.h"
+#endif
 
-const char *generate_teleporter_zip(mz_zip_archive *zip, char filename[128], void **ptr, size_t *size);
-bool free_teleporter_zip(mz_zip_archive *zip);
+// A finished Teleporter ZIP archive: data points at size bytes. Release it with
+// free_teleporter_zip(), not with free().
+struct teleporter_zip {
+	uint8_t *data;
+	size_t size;
+#ifdef HAVE_FTL_RS
+	ftl_rs_buf buf; // the Rust buffer that data points into
+#endif
+};
+
+const char *generate_teleporter_zip(char filename[128], struct teleporter_zip *zip);
+void free_teleporter_zip(struct teleporter_zip *zip);
 bool valid_dhcp_leases(const char *data, const size_t size);
 const char *read_teleporter_zip(uint8_t *buffer, const size_t buflen, char *hint, cJSON *import, cJSON *json_files);
 

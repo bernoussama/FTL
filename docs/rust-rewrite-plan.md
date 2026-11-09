@@ -71,7 +71,7 @@ Every module goes through the same loop:
 | # | Module | Notes |
 |---|---|---|
 | 2 | Small utilities: sha256, idn2, `--complete` | Proves the whole loop end to end. **Done through "Compare" and "Switch over"** (see below). |
-| 3 | Archive parsing for teleporter (tar, gzip, zip) | **Exposed to input users upload.** The spec is the reported sizes plus a decompression round trip (`:2294`), not identical compressed bytes (gzip embeds mtime, `src/zip/gzip.c:83`). Port the tar/gzip harness cases. |
+| 3 | Archive parsing for teleporter (tar, gzip, zip) | **Done through "Compare" and "Switch over"** (see below). **Exposed to input users upload.** The spec is the reported sizes plus a decompression round trip (`:2294`), not identical compressed bytes (gzip embeds mtime, `src/zip/gzip.c:83`). Port the tar/gzip harness cases. |
 | 4 | Config (`pihole.toml`, `FTLCONF_` env vars, validators, `--config`) | Rust works on copied snapshots and C keeps the `lock_shm` swap (`src/config/config.c:259`, `:2193`). Preserve when and how often files get rewritten; the totals in `test_final.bats:47` are scenario-specific and differ on riscv64. |
 | 5 | Regex extensions (`;querytype=`, `;reply=`, `;invert`) and the `regex-test` CLI | **Keep TRE in C behind FFI.** It provides approximate matching, backreferences, `(?#)` comments and the exact error text tests check (`:886`–`:1227`). Porting TRE is a separate, optional project. Respect the regex lifetime fixes (`bbe1718e`, `9e1e5065`). |
 | 6 | Database: schema, migrations, teleporter import and export | Uses FTL's existing SQLite. Copy the schema SQL verbatim (`:670`). |
@@ -89,6 +89,18 @@ Done on `rust-rewrite` (2026-11-09). With `-DFTL_RUST=ON` all three modules repl
 - `--complete`: Rust holds the rules, C passes a config snapshot (`ftl_rs_conf_entry`, layout-checked). `rust-compare complete`: 7,838 command lines, byte-identical.
 - Goldens (`sha256`, `idn2`, `complete`) pass unchanged on both builds, and the full suite passes on both.
 - Binary size (amd64, static): 29,095,353 bytes for C, 30,011,889 with the Rust modules (+916 KB, mostly the Unicode tables of `idna` and the IDNA2008 table).
+
+### Phase 3 status
+
+Done on `rust-rewrite` (2026-11-09). With `-DFTL_RUST=ON` tar, gzip and the teleporter ZIP container run in Rust for every caller (API import and export, `--teleporter`, `gzip`/`gunzip`). The C code (tar.c, gzip.c, miniz's `mz_zip`) stays compiled as the reference, and the C regression harnesses keep testing it.
+
+- All three treat sizes as untrusted, keep (at least) the C limits, and have a deterministic mutation test both in `cargo test` and in `rust-compare`, which runs C in a forked child. C did not crash on any mutant.
+- tar: offsets into the caller's buffer, C builds the cJSON. `rust-compare tar`: 4,133 inputs (45 vectors, generated archives, 4,000 mutants), 0 differences.
+- gzip: on `miniz_oxide` 0.8 (vendored). `rust-compare gzip`: 4,985 inputs (round trips in both directions, the file-level wrappers, mutants), 0 differences. 14 mutants are a documented difference: both reject them, but C's miniz accepts an incomplete code-length table and fails later ("buf error") where Rust fails at once ("data error").
+- zip: own reader and writer (CRC-32 included, deflate via `miniz_oxide`) behind opaque handles; teleporter.c keeps its logic behind small adapters. `rust-compare zip`: 4,316 inputs (C-written archives read by Rust and the reverse, truncations, 4,272 mutants), 0 differences. Documented: miniz reports success for a corrupt member marked as a directory and leaves the output buffer untouched, so teleporter would import uninitialised memory; Rust fails the extraction.
+- Fixed in C on the way: a double free in `read_teleporter_zip()` on an allocation failure path.
+- Goldens (`gzip`, `teleporter`) pass unchanged on both builds, and the full suite passes on both.
+- Binary size (amd64, static): 29,099,073 bytes for C, 30,424,985 with the Rust modules (+413 KB over Phase 2, mostly `miniz_oxide` and the ZIP code; +1.33 MB in total).
 
 **Deferred:** dnsmasq stays in C. Budget ongoing work merging upstream dnsmasq releases and keeping FTL's hooks working. If its DNS side is replaced later, the TXT buffer fix (`57878df1`) and the DHCP thread-ownership fix (`f8a939cf`) become requirements to carry over.
 

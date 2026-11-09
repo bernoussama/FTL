@@ -773,7 +773,16 @@ void parse_args(int argc, char *argv[])
 		                            offsetof(ftl_rs_conf_entry, choices), offsetof(ftl_rs_conf_entry, n_choices) };
 		const char *entry_field[6] = { "size", "key", "kind", "default_value", "choices", "n_choices" };
 		const bool entry_ok = layout_matches("ftl_rs_conf_entry", rust_entry, c_entry, entry_field, 6);
-		exit(ok && buf_ok && entry_ok ? EXIT_SUCCESS : EXIT_FAILURE);
+
+		// Size of ftl_rs_zip_stat, then the offsets of the fields after its padding
+		size_t rust_stat[6] = { 0 };
+		ftl_rs_zip_stat_layout(rust_stat);
+		const size_t c_stat[6] = { sizeof(ftl_rs_zip_stat), offsetof(ftl_rs_zip_stat, is_directory),
+		                           offsetof(ftl_rs_zip_stat, comp_size), offsetof(ftl_rs_zip_stat, local_header_ofs),
+		                           offsetof(ftl_rs_zip_stat, name), offsetof(ftl_rs_zip_stat, comment) };
+		const char *stat_field[6] = { "size", "is_directory", "comp_size", "local_header_ofs", "name", "comment" };
+		const bool stat_ok = layout_matches("ftl_rs_zip_stat", rust_stat, c_stat, stat_field, 6);
+		exit(ok && buf_ok && entry_ok && stat_ok ? EXIT_SUCCESS : EXIT_FAILURE);
 #else
 		printf("FTL was built without the Rust library\n");
 		exit(EXIT_FAILURE);

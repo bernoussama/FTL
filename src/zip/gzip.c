@@ -11,6 +11,9 @@
 #include "FTL.h"
 #include "gzip.h"
 #include "log.h"
+#ifdef HAVE_FTL_RS
+#include "ftl_rs.h"
+#endif
 
 #include <errno.h>
 #include <stdio.h>
@@ -27,8 +30,13 @@
 
 static int mz_uncompress2_raw(unsigned char *pDest, mz_ulong *pDest_len, const unsigned char *pSource, mz_ulong *pSource_len);
 
+#ifdef HAVE_FTL_RS
+bool deflate_buffer_c(const unsigned char *buffer_uncompressed, const mz_ulong size_uncompressed,
+                      unsigned char **buffer_compressed, mz_ulong *size_compressed)
+#else
 static bool deflate_buffer(const unsigned char *buffer_uncompressed, const mz_ulong size_uncompressed,
                            unsigned char **buffer_compressed, mz_ulong *size_compressed)
+#endif
 {
 	// Allocate memory for compressed file
 	// (compressBound() returns the maximum size of the compressed data)
@@ -110,8 +118,13 @@ static bool deflate_buffer(const unsigned char *buffer_uncompressed, const mz_ul
 	return true;
 }
 
+#ifdef HAVE_FTL_RS
+bool inflate_buffer_c(unsigned char *buffer_compressed, mz_ulong size_compressed,
+                      unsigned char **buffer_uncompressed, mz_ulong *size_uncompressed)
+#else
 bool inflate_buffer(unsigned char *buffer_compressed, mz_ulong size_compressed,
                     unsigned char **buffer_uncompressed, mz_ulong *size_uncompressed)
+#endif
 {
 	// Check GZIP header (magic byte 1F 8B and compression algorithm deflate 08)
 	if(size_compressed < (GZIP_HEADER_SIZE + GZIP_FOOTER_SIZE) || buffer_compressed[0] != 0x1F || buffer_compressed[1] != 0x8B)
@@ -317,6 +330,53 @@ bool inflate_buffer(unsigned char *buffer_compressed, mz_ulong size_compressed,
 
 	return true;
 }
+
+#ifdef HAVE_FTL_RS
+// The callers free the buffers with free(), so the Rust buffers are copied into
+// malloc'ed ones, and released
+static bool copy_from_rust(ftl_rs_buf *buf, unsigned char **dest, mz_ulong *dest_len)
+{
+	// ftl_rs_buf_free() clears buf, so the length is taken before it is freed
+	const size_t len = buf->len;
+	// malloc(0) may give NULL, which the callers take for a failure
+	unsigned char *copy = malloc(len > 0 ? len : 1);
+	if(copy == NULL)
+	{
+		log_warn("Failed to allocate %lu bytes of memory", (unsigned long)len);
+		ftl_rs_buf_free(buf);
+		return false;
+	}
+	if(len > 0)
+		memcpy(copy, buf->ptr, len);
+	ftl_rs_buf_free(buf);
+	*dest = copy;
+	*dest_len = len;
+	return true;
+}
+
+static bool deflate_buffer(const unsigned char *buffer_uncompressed, const mz_ulong size_uncompressed,
+                           unsigned char **buffer_compressed, mz_ulong *size_compressed)
+{
+	ftl_rs_buf compressed = { NULL, 0, 0 };
+	if(!ftl_rs_gzip_deflate(buffer_uncompressed, size_uncompressed, (uint32_t)time(NULL), &compressed))
+		return false;
+	return copy_from_rust(&compressed, buffer_compressed, size_compressed);
+}
+
+bool inflate_buffer(unsigned char *buffer_compressed, mz_ulong size_compressed,
+                    unsigned char **buffer_uncompressed, mz_ulong *size_uncompressed)
+{
+	ftl_rs_buf uncompressed = { NULL, 0, 0 };
+	ftl_rs_buf message = { NULL, 0, 0 };
+	if(!ftl_rs_gzip_inflate(buffer_compressed, size_compressed, &uncompressed, &message))
+	{
+		log_warn("%.*s", (int)message.len, (const char *)message.ptr);
+		ftl_rs_buf_free(&message);
+		return false;
+	}
+	return copy_from_rust(&uncompressed, buffer_uncompressed, size_uncompressed);
+}
+#endif
 
 bool inflate_file(const char *infilename, const char *outfilename, bool verbose)
 {

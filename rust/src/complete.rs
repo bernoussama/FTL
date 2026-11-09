@@ -15,7 +15,7 @@
 //! to print.
 
 use std::ffi::{c_char, c_int, CStr};
-use std::mem::{align_of, offset_of, size_of};
+use std::mem::{offset_of, size_of};
 use std::ptr;
 use std::slice;
 
@@ -317,6 +317,7 @@ mod tests {
     use super::*;
     use crate::buf::ftl_rs_buf_free;
     use std::ffi::CString;
+    use std::mem::align_of;
 
     /// The config items of the tests, in config order.
     fn items() -> Vec<ConfItem<'static>> {
